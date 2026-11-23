@@ -8,6 +8,11 @@ export interface DemoWatermarkProps extends React.HTMLAttributes<HTMLSpanElement
 
 export const DemoWatermark = React.forwardRef<HTMLSpanElement, DemoWatermarkProps>(
   ({ className, size = "sm", text = "DEMONSTRAÇÃO", ...props }, ref) => {
+    // Em produção estrita (NEXT_PUBLIC_DEMO_MODE !== "true"), não renderiza marca d'água
+    if (process.env.NEXT_PUBLIC_DEMO_MODE !== "true" && process.env.NODE_ENV === "production") {
+      return null;
+    }
+
     return (
       <span
         ref={ref}

@@ -22,13 +22,16 @@ export async function adminLogin(formData: FormData): Promise<MasterAuthResult> 
     return { success: false, error: "Informe credenciais de administrador." };
   }
 
-  // Lista de credenciais de teste para demonstração e homologação Master
+  // Verificação de ambiente: credenciais de demonstração são expressamente proibidas em produção
+  const isProduction = process.env.NODE_ENV === "production";
+  const demoModeAllowed = !isProduction && process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
   const DEMO_MASTER_CREDENTIALS: Record<string, string> = {
     "admin@dmiastudio.com": "Master@2026",
     "suporte@dmiastudio.com": "Suporte@2026",
   };
 
-  const isDemoAdmin = DEMO_MASTER_CREDENTIALS[email.toLowerCase()] === password;
+  const isDemoAdmin = demoModeAllowed && DEMO_MASTER_CREDENTIALS[email.toLowerCase()] === password;
 
   if (!isDemoAdmin) {
     const supabase = await createClient();
@@ -76,25 +79,47 @@ export async function verifyMfa(code: string): Promise<MasterAuthResult> {
 
   // Try verifying with Supabase MFA if factors exist
   if (user) {
-    const { data: factors } = await supabase.auth.mfa.listFactors();
-    const totpFactor = factors?.totp[0];
+    const { data: factors, error: listErr } = await supabase.auth.mfa.listFactors();
+    if (listErr) {
+      return { success: false, error: "Erro ao consultar fatores MFA do usuário." };
+    }
+    const totpFactor = factors?.totp?.find((f) => f.status === "verified") || factors?.totp?.[0];
 
     if (totpFactor) {
       const challenge = await supabase.auth.mfa.challenge({
         factorId: totpFactor.id,
       });
 
-      if (!challenge.error) {
-        const verifyRes = await supabase.auth.mfa.verify({
-          factorId: totpFactor.id,
-          challengeId: challenge.data.id,
-          code: sanitizedCode,
-        });
-
-        if (verifyRes.error) {
-          return { success: false, error: "Código TOTP inválido ou expirado." };
-        }
+      if (challenge.error) {
+        return { success: false, error: challenge.error.message || "Erro ao gerar desafio MFA." };
       }
+
+      const verifyRes = await supabase.auth.mfa.verify({
+        factorId: totpFactor.id,
+        challengeId: challenge.data.id,
+        code: sanitizedCode,
+      });
+
+      if (verifyRes.error) {
+        return { success: false, error: "Código TOTP inválido ou expirado." };
+      }
+    } else {
+      // Usuário autenticado sem fator TOTP cadastrado
+      const isProduction = process.env.NODE_ENV === "production";
+      if (isProduction) {
+        return { success: false, error: "MFA obrigatório não configurado para este administrador em produção." };
+      }
+      // Em desenvolvimento/homologação com demo code
+      if (sanitizedCode !== "123456") {
+        return { success: false, error: "Código TOTP de teste inválido." };
+      }
+    }
+  } else {
+    // Se não há sessão Supabase ativa, só permite bypass se estiver explicitamente em DEMO não-produção
+    const isProduction = process.env.NODE_ENV === "production";
+    const demoModeAllowed = !isProduction && process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+    if (!demoModeAllowed || sanitizedCode !== "123456") {
+      return { success: false, error: "Sessão inválida ou código TOTP incorreto." };
     }
   }
 

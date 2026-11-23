@@ -6,22 +6,22 @@
 
 @layer base {
   :root {
-    /* Palette from prototipo/index.html (Modo Claro / Off-White Acessível) */
+    /* Palette from prototipo/index.html */
     --ink: #172b27;
-    --muted: #64746f;
-    --line: #e2e8e4;
-    --paper: #f4f6f3; /* Fundo suave, não estoura branco puro no olho */
+    --muted: #77847f;
+    --line: #e8eeea;
+    --paper: #f6f8f5;
     --surface: #ffffff;
     --green: #176b52;
     --green-hover: #125440;
     --green-dark: #0d3a2c;
     --mint: #e8f3ed;
-    --gold: #b87b28;
-    --red: #b94b3e;
-    --blue: #406c8f;
+    --gold: #c78c38;
+    --red: #bb5d51;
+    --blue: #557a98;
 
     /* Semantic tokens */
-    --background: #f4f6f3;
+    --background: #f6f8f5;
     --foreground: #172b27;
     --card: #ffffff;
     --card-foreground: #172b27;

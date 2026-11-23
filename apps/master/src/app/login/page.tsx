@@ -144,44 +144,46 @@ export default function MasterLoginPage() {
               </Button>
             </form>
 
-            {/* Acesso Rápido para Testes e Demonstração Master */}
-            <div className="pt-3 border-t border-paper-line space-y-2">
-              <span className="text-[10px] font-bold text-muted uppercase tracking-wider block text-center">
-                Acessos de Teste (Clique para Preencher):
-              </span>
-              <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail("admin@dmiastudio.com");
-                    setPassword("Master@2026");
-                  }}
-                  className="p-1.5 rounded border border-line bg-paper/60 hover:bg-mint text-left font-medium text-ink transition-colors"
-                >
-                  <strong className="block text-green text-[10px]">Master Admin</strong>
-                  <span>admin@dmiastudio.com</span>
-                </button>
+            {/* Acesso Rápido para Testes e Demonstração Master (Apenas em ambiente de desenvolvimento) */}
+            {process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
+              <div className="pt-3 border-t border-paper-line space-y-2">
+                <span className="text-[10px] font-bold text-muted uppercase tracking-wider block text-center">
+                  Acessos de Teste (Dev / Homologação):
+                </span>
+                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail("admin@dmiastudio.com");
+                      setPassword("Master@2026");
+                    }}
+                    className="p-1.5 rounded border border-line bg-paper/60 hover:bg-mint text-left font-medium text-ink transition-colors"
+                  >
+                    <strong className="block text-green text-[10px]">Master Admin</strong>
+                    <span>admin@dmiastudio.com</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail("suporte@dmiastudio.com");
-                    setPassword("Suporte@2026");
-                  }}
-                  className="p-1.5 rounded border border-line bg-paper/60 hover:bg-mint text-left font-medium text-ink transition-colors"
-                >
-                  <strong className="block text-blue-700 text-[10px]">Suporte JIT</strong>
-                  <span>suporte@dmiastudio.com</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail("suporte@dmiastudio.com");
+                      setPassword("Suporte@2026");
+                    }}
+                    className="p-1.5 rounded border border-line bg-paper/60 hover:bg-mint text-left font-medium text-ink transition-colors"
+                  >
+                    <strong className="block text-blue-700 text-[10px]">Suporte JIT</strong>
+                    <span>suporte@dmiastudio.com</span>
+                  </button>
 
-                <a
-                  href="/dashboard"
-                  className="col-span-2 p-1.5 rounded border border-ink/20 bg-ink/5 hover:bg-ink/10 text-center font-bold text-ink grid place-items-center transition-colors text-[11px]"
-                >
-                  ⚡ Entrar Direto no Dashboard Master (Demo)
-                </a>
+                  <a
+                    href="/dashboard"
+                    className="col-span-2 p-1.5 rounded border border-ink/20 bg-ink/5 hover:bg-ink/10 text-center font-bold text-ink grid place-items-center transition-colors text-[11px]"
+                  >
+                    ⚡ Entrar Direto no Dashboard Master (Demo)
+                  </a>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 

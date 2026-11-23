@@ -33,14 +33,32 @@ begin
       using (user_id = auth.uid());
   end if;
 
-  -- Policy: profiles_select_all
-  if not exists (
+  -- Policy: profiles_select_organization_or_self (substitui profiles_select_all para eliminar leituras globais)
+  if exists (
     select 1 from pg_policies 
     where schemaname = 'public' and tablename = 'profiles' and policyname = 'profiles_select_all'
   ) then
-    create policy profiles_select_all on public.profiles
+    drop policy profiles_select_all on public.profiles;
+  end if;
+
+  if not exists (
+    select 1 from pg_policies 
+    where schemaname = 'public' and tablename = 'profiles' and policyname = 'profiles_select_organization_or_self'
+  ) then
+    create policy profiles_select_organization_or_self on public.profiles
       for select to authenticated
-      using (true);
+      using (
+        user_id = auth.uid()
+        or exists (
+          select 1 
+          from public.memberships m_viewer
+          join public.memberships m_target on m_viewer.organization_id = m_target.organization_id
+          where m_viewer.user_id = auth.uid()
+            and m_viewer.status = 'active'
+            and m_target.user_id = public.profiles.user_id
+            and m_target.status = 'active'
+        )
+      );
   end if;
 
   -- Policy: profiles_update_self
