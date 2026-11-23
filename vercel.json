@@ -12,6 +12,12 @@
   },
   "rewrites": [
     {
+      "source": "/master",
+      "destination": {
+        "service": "master"
+      }
+    },
+    {
       "source": "/master/(.*)",
       "destination": {
         "service": "master"
