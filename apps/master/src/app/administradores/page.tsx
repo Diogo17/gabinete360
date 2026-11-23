@@ -33,6 +33,9 @@ import {
   Shield,
   CheckCircle2,
   Info,
+  Trash2,
+  Edit2,
+  Camera,
 } from "lucide-react";
 import { MasterShell } from "../../components/master-shell";
 
@@ -166,12 +169,40 @@ export default function AdminsManagementPage() {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
   const [selectedAdminHistory, setSelectedAdminHistory] = useState<ExtendedAdmin | null>(null);
+  const [editingAdmin, setEditingAdmin] = useState<ExtendedAdmin | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState("platform_operations");
 
   const [newAdminData, setNewAdminData] = useState({
     name: "",
     email: "",
     role: "platform_operations",
   });
+
+  const handleDeleteAdmin = (id: string, name: string) => {
+    if (confirm(`Tem certeza que deseja remover o acesso do administrador ${name}?`)) {
+      setAdmins(admins.filter((a) => a.id !== id));
+    }
+  };
+
+  const handleEditOpen = (admin: ExtendedAdmin) => {
+    setEditingAdmin(admin);
+    setEditName(admin.display_name);
+    setEditRole(admin.role || "platform_operations");
+  };
+
+  const handleEditSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAdmin) return;
+    setAdmins(
+      admins.map((a) =>
+        a.id === editingAdmin.id
+          ? { ...a, display_name: editName, role: editRole }
+          : a
+      )
+    );
+    setEditingAdmin(null);
+  };
 
   const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -348,15 +379,37 @@ export default function AdminsManagementPage() {
                     )}
                   </Td>
                   <Td className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedAdminHistory(admin)}
-                      className="text-xs text-green hover:underline h-7 px-2"
-                    >
-                      <History className="h-3.5 w-3.5 mr-1" />
-                      Ver Logs
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditOpen(admin)}
+                        className="text-xs text-muted hover:text-ink h-7 px-2"
+                        title="Editar Administrador"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedAdminHistory(admin)}
+                        className="text-xs text-green hover:underline h-7 px-2"
+                        title="Ver Logs"
+                      >
+                        <History className="h-3.5 w-3.5" />
+                      </Button>
+                      {admin.email !== "diogosrodrigues92@gmail.com" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteAdmin(admin.id, admin.display_name)}
+                          className="text-xs text-red hover:bg-red/10 h-7 px-2"
+                          title="Excluir Administrador"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   </Td>
                 </Tr>
               ))}
@@ -497,6 +550,52 @@ export default function AdminsManagementPage() {
               </Button>
             </div>
           </div>
+        )}
+      </Modal>
+
+      {/* Modal: Edit Admin Profile & Access */}
+      <Modal
+        isOpen={!!editingAdmin}
+        onClose={() => setEditingAdmin(null)}
+        title="Editar Perfil e Acessos do Administrador"
+        description="Altere o nome de exibição, foto ou papel de governança deste operador."
+        size="md"
+      >
+        {editingAdmin && (
+          <form onSubmit={handleEditSave} className="space-y-4">
+            <Input
+              label="Nome de Exibição *"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              required
+            />
+            <Input
+              label="E-mail (Inalterável)"
+              value={editingAdmin.email}
+              disabled
+              className="bg-muted-bg cursor-not-allowed opacity-75 font-mono"
+            />
+            <Select
+              label="Papel / Perfil de Acesso *"
+              value={editRole}
+              onChange={(e) => setEditRole(e.target.value)}
+            >
+              <option value="platform_super_admin">Super Administrador</option>
+              <option value="platform_operations">Operações & Infraestrutura</option>
+              <option value="platform_security_admin">Administrador de Segurança</option>
+              <option value="platform_support">Suporte Nível 3 (JIT)</option>
+              <option value="platform_auditor">Auditor de Conformidade</option>
+            </Select>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-line">
+              <Button variant="outline" size="sm" type="button" onClick={() => setEditingAdmin(null)}>
+                Cancelar
+              </Button>
+              <Button variant="primary" size="sm" type="submit">
+                Salvar Alterações
+              </Button>
+            </div>
+          </form>
         )}
       </Modal>
     </MasterShell>

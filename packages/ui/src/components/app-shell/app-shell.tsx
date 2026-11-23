@@ -24,6 +24,8 @@ export interface AppShellProps {
   topbarActions?: React.ReactNode;
   sidebarFooter?: React.ReactNode;
   showDemoWatermark?: boolean;
+  onLogoutClick?: () => void;
+  onProfileClick?: () => void;
   className?: string;
 }
 
@@ -45,6 +47,8 @@ export function AppShell({
   topbarActions,
   sidebarFooter,
   showDemoWatermark = true,
+  onLogoutClick,
+  onProfileClick,
   className,
 }: AppShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
@@ -89,6 +93,8 @@ export function AppShell({
           userInitials={userInitials}
           notificationCount={notificationCount}
           onMobileMenuClick={() => setMobileNavOpen(true)}
+          onLogoutClick={onLogoutClick}
+          onProfileClick={onProfileClick}
           actions={topbarActions}
           showDemoWatermark={showDemoWatermark}
         />

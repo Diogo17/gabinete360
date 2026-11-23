@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useOrganization } from "../lib/tenant/context";
 import { OrganizationSwitcher } from "./org-switcher";
+import { signOut } from "../lib/auth/actions";
 import { AppShell } from "@gabinete360/ui";
 import type { BreadcrumbCrumb, NavGroup } from "@gabinete360/ui";
 import {
@@ -188,7 +189,13 @@ export function ClientShell({
       navGroups={navGroups}
       breadcrumbs={defaultBreadcrumbs}
       notificationCount={3}
-      showDemoWatermark={true}
+      showDemoWatermark={process.env.NEXT_PUBLIC_DEMO_MODE === "true"}
+      onLogoutClick={async () => {
+        await signOut();
+      }}
+      onProfileClick={() => {
+        router.push("/equipe");
+      }}
       topbarActions={
         <div className="flex items-center gap-2">
           <OrganizationSwitcher />

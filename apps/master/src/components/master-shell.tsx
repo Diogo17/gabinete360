@@ -18,7 +18,9 @@ import {
   Activity,
   FileText,
   LifeBuoy,
+  User,
 } from "lucide-react";
+import { adminSignOut } from "../lib/auth/actions";
 
 export interface MasterShellProps {
   children: React.ReactNode;
@@ -137,7 +139,13 @@ export function MasterShell({
       breadcrumbs={breadcrumbs || defaultBreadcrumbs}
       notificationCount={2}
       topbarActions={actions}
-      showDemoWatermark={true}
+      showDemoWatermark={process.env.NEXT_PUBLIC_DEMO_MODE === "true"}
+      onLogoutClick={async () => {
+        await adminSignOut();
+      }}
+      onProfileClick={() => {
+        router.push("/administradores");
+      }}
     >
       <div className="space-y-6">
         {title && (

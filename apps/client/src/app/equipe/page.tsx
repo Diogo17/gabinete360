@@ -27,18 +27,59 @@ import {
   Mail,
   Phone,
   CheckCircle,
+  Edit2,
+  Trash2,
+  Camera,
 } from "lucide-react";
 import { DEMO_TEAM_MEMBERS, type DemoTeamMember } from "../../lib/mock-data";
 
 export default function EquipePage() {
   const [members, setMembers] = useState<DemoTeamMember[]>(DEMO_TEAM_MEMBERS);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<DemoTeamMember | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRoleTitle, setEditRoleTitle] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRole, setEditRole] = useState("advisor");
 
   // Form State
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [roleTitle, setRoleTitle] = useState("Assessor Parlamentar");
   const [role, setRole] = useState("advisor");
+
+  const handleEditOpen = (m: DemoTeamMember) => {
+    setEditingMember(m);
+    setEditName(m.name);
+    setEditRoleTitle(m.role_title);
+    setEditPhone(m.phone || "");
+    setEditRole(m.role as string);
+  };
+
+  const handleEditSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember) return;
+    setMembers(
+      members.map((m) =>
+        m.id === editingMember.id
+          ? {
+              ...m,
+              name: editName,
+              role_title: editRoleTitle,
+              phone: editPhone,
+              role: editRole as any,
+            }
+          : m
+      )
+    );
+    setEditingMember(null);
+  };
+
+  const handleDeleteMember = (id: string, memberName: string) => {
+    if (confirm(`Tem certeza que deseja remover ${memberName} da equipe do gabinete?`)) {
+      setMembers(members.filter((m) => m.id !== id));
+    }
+  };
 
   const handleInvite = (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,6 +157,7 @@ export default function EquipePage() {
                   <Th>Papel RBAC</Th>
                   <Th>Demandas Atribuídas</Th>
                   <Th>Status</Th>
+                  <Th className="text-right">Ações</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -145,6 +187,30 @@ export default function EquipePage() {
                       <Badge variant={m.status === "active" ? "green" : "amber"}>
                         {m.status === "active" ? "Ativo" : "Convidado"}
                       </Badge>
+                    </Td>
+                    <Td className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditOpen(m)}
+                          className="text-xs text-muted hover:text-ink h-7 px-2"
+                          title="Editar Perfil e Acesso"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+                        {m.role !== "owner" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteMember(m.id, m.name)}
+                            className="text-xs text-red hover:bg-red/10 h-7 px-2"
+                            title="Remover Acesso"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </Td>
                   </Tr>
                 ))}
@@ -210,6 +276,76 @@ export default function EquipePage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal Editar Perfil de Acesso */}
+      <Modal
+        isOpen={!!editingMember}
+        onClose={() => setEditingMember(null)}
+        title="Editar Perfil e Permissões do Membro"
+      >
+        {editingMember && (
+          <form onSubmit={handleEditSave} className="space-y-4 text-xs">
+            <div>
+              <label className="font-semibold block mb-1">Nome Completo *</label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold block mb-1">E-mail Corporativo</label>
+              <Input
+                value={editingMember.email}
+                disabled
+                className="bg-muted-bg cursor-not-allowed opacity-75 font-mono"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="font-semibold block mb-1">Cargo no Mandato *</label>
+                <Input
+                  value={editRoleTitle}
+                  onChange={(e) => setEditRoleTitle(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="font-semibold block mb-1">Telefone / WhatsApp</label>
+                <Input
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="+55 13 99999-0000"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="font-semibold block mb-1">Papel RBAC *</label>
+              <Select
+                value={editRole}
+                onChange={(e) => setEditRole(e.target.value)}
+                options={[
+                  { value: "advisor", label: "Assessor (Atendimentos e Agenda)" },
+                  { value: "admin", label: "Chefe de Gabinete (Acesso Total)" },
+                  { value: "owner", label: "Titular do Mandato (Parlamentar)" },
+                ]}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-line">
+              <Button variant="ghost" type="button" onClick={() => setEditingMember(null)}>
+                Cancelar
+              </Button>
+              <Button variant="primary" type="submit">
+                Salvar Alterações
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </ClientShell>
   );

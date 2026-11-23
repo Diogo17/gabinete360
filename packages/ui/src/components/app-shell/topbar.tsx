@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Bell, Menu, Sun, Moon } from "lucide-react";
+import { Bell, Menu, Sun, Moon, LogOut, User } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Avatar } from "../avatar";
 import { DemoWatermark } from "../demo-watermark";
@@ -19,6 +19,8 @@ export interface TopbarProps extends React.HTMLAttributes<HTMLElement> {
   notificationCount?: number;
   onNotificationClick?: () => void;
   onMobileMenuClick?: () => void;
+  onLogoutClick?: () => void;
+  onProfileClick?: () => void;
   actions?: React.ReactNode;
   showDemoWatermark?: boolean;
 }
@@ -35,6 +37,8 @@ export const Topbar = React.forwardRef<HTMLElement, TopbarProps>(
       notificationCount = 0,
       onNotificationClick,
       onMobileMenuClick,
+      onLogoutClick,
+      onProfileClick,
       actions,
       showDemoWatermark = true,
       ...props
@@ -152,23 +156,43 @@ export const Topbar = React.forwardRef<HTMLElement, TopbarProps>(
 
           {/* User Profile Pill */}
           <div className="flex items-center gap-1.5 sm:gap-2 pl-1 border-l border-line ml-0.5 sm:ml-1">
-            <Avatar
-              name={userName}
-              initials={userInitials}
-              src={userAvatarSrc}
-              size="md"
-              paletteIndex={0}
-            />
-            <div className="hidden lg:flex flex-col text-left">
-              <span className="text-xs font-bold text-foreground leading-tight">
-                {userName}
-              </span>
-              {userRole && (
-                <span className="text-[10px] text-muted">
-                  {userRole}
+            <button
+              type="button"
+              onClick={onProfileClick}
+              className="flex items-center gap-1.5 sm:gap-2 text-left p-1 rounded-md hover:bg-muted-bg transition-colors"
+              title="Meu Perfil e Acessos"
+            >
+              <Avatar
+                name={userName}
+                initials={userInitials}
+                src={userAvatarSrc}
+                size="md"
+                paletteIndex={0}
+              />
+              <div className="hidden lg:flex flex-col text-left">
+                <span className="text-xs font-bold text-foreground leading-tight hover:underline flex items-center gap-1">
+                  {userName}
                 </span>
-              )}
-            </div>
+                {userRole && (
+                  <span className="text-[10px] text-muted">
+                    {userRole}
+                  </span>
+                )}
+              </div>
+            </button>
+
+            {/* Logout Action Button */}
+            {onLogoutClick && (
+              <button
+                type="button"
+                onClick={onLogoutClick}
+                className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-line bg-card text-muted hover:border-red hover:text-red hover:bg-red/5 transition-colors shadow-2xs ml-0.5"
+                title="Sair do Sistema (Logout)"
+                aria-label="Sair do Sistema"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
       </header>
