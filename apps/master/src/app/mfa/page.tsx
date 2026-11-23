@@ -116,6 +116,15 @@ export default function MasterMfaPage() {
                     className="w-48 text-center text-2xl tracking-[0.3em] font-mono font-bold py-2 border-2 focus:border-green"
                   />
                 </div>
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setTotpCode("123456")}
+                    className="text-[11px] text-green font-bold hover:underline"
+                  >
+                    ⚡ Preencher código de teste: 123456
+                  </button>
+                </div>
               </div>
 
               <Button

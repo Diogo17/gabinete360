@@ -19,6 +19,7 @@ import {
   Shield,
   HelpCircle,
   UserCheck,
+  Globe,
 } from "lucide-react";
 
 export interface ClientShellProps {
@@ -154,6 +155,18 @@ export function ClientShell({
         },
       ],
     },
+    {
+      label: "Transparência & Cidadão",
+      items: [
+        {
+          label: "Portal Público do Mandato",
+          href: "/portal",
+          icon: <Globe className="h-4 w-4" />,
+          active: isRouteActive("/portal"),
+          onClick: () => router.push("/portal"),
+        },
+      ],
+    },
   ];
 
   const defaultBreadcrumbs: BreadcrumbCrumb[] = breadcrumbs || [
@@ -179,6 +192,13 @@ export function ClientShell({
       topbarActions={
         <div className="flex items-center gap-2">
           <OrganizationSwitcher />
+          <a
+            href="/master/dashboard"
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg border border-line bg-paper text-ink hover:bg-mint hover:text-green hover:border-green/30 transition-all"
+            title="Acessar o Painel de Controle Master (DM IA Studio)"
+          >
+            <Shield className="h-3.5 w-3.5 text-green" /> Painel Master
+          </a>
           {topbarActions}
         </div>
       }

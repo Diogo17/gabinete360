@@ -1,0 +1,301 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Badge,
+  Button,
+  Avatar,
+  Input,
+  Textarea,
+} from "@gabinete360/ui";
+import {
+  Building2,
+  Calendar,
+  FileSpreadsheet,
+  HelpCircle,
+  Newspaper,
+  Send,
+  CheckCircle,
+  ExternalLink,
+  MapPin,
+  Mail,
+  Phone,
+  ShieldCheck,
+  ArrowRight,
+  Globe,
+} from "lucide-react";
+
+export default function PortalPublicoPage() {
+  const [formSent, setFormSent] = useState(false);
+  const [citizenName, setCitizenName] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [message, setMessage] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!citizenName || !message) return;
+    setFormSent(true);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F6F8F5] text-[#172B27] flex flex-col font-sans">
+      {/* Topo Institucional de Transparência */}
+      <header className="bg-white border-b border-[#E8EEEA] sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-[#176B52] grid place-items-center text-white font-heading font-extrabold text-sm">
+              360°
+            </div>
+            <div>
+              <div className="font-heading font-extrabold text-sm text-[#172B27]">
+                Gabinete Vereadora Mariana Costa
+              </div>
+              <div className="text-[10px] text-[#77847F]">
+                Câmara Municipal de Santos · SP · Portal de Transparência
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs">
+            <nav className="hidden md:flex items-center gap-5 text-[#77847F] font-semibold">
+              <a href="#biografia" className="hover:text-[#176B52]">Biografia</a>
+              <a href="#projetos" className="hover:text-[#176B52]">Projetos de Lei</a>
+              <a href="#agenda" className="hover:text-[#176B52]">Agenda Pública</a>
+              <a href="#participacao" className="hover:text-[#176B52]">Participe</a>
+            </nav>
+            <Link href="/login">
+              <Button variant="secondary" size="sm" className="text-xs">
+                Acesso Restrito
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero do Parlamentar */}
+      <section className="bg-gradient-to-b from-[#E8F3ED]/60 to-transparent py-12 px-4 border-b border-[#E8EEEA]" id="biografia">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+          <div className="md:col-span-1 flex flex-col items-center md:items-start text-center md:text-left">
+            <div className="h-32 w-32 rounded-2xl bg-[#D6E5DD] border-4 border-white shadow-md grid place-items-center text-[#176B52] font-heading font-bold text-3xl">
+              MC
+            </div>
+            <h1 className="mt-4 font-heading text-2xl font-extrabold text-[#172B27]">
+              Mariana Costa
+            </h1>
+            <p className="text-xs font-semibold text-[#176B52] uppercase tracking-wider">
+              Vereadora · 2º Mandato
+            </p>
+            <div className="mt-2 text-xs text-[#77847F] flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5" /> Santos, São Paulo
+            </div>
+          </div>
+
+          <div className="md:col-span-2 space-y-4 text-xs md:text-sm text-[#172B27]/80 leading-relaxed">
+            <h2 className="font-heading font-bold text-lg text-[#172B27]">
+              Compromisso com a Comunidade, Transparência e Inovação Pública
+            </h2>
+            <p>
+              Advogada popular com especialização em Políticas Públicas e Gestão Urbana. Eleita para o 2º mandato na Câmara Municipal de Santos com foco em saúde comunitária, iluminação pública, acessibilidade nos bairros periféricos e combate à corrupção.
+            </p>
+            <p>
+              O mandato utiliza o <strong>Gabinete Digital 360°</strong> para assegurar que 100% das demandas enviadas pelos munícipes sejam registradas com protocolo formal auditável e acompanhadas até a resolução junto ao Poder Executivo.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white border border-[#E8EEEA] text-[#176B52]">
+                ✓ +840 Demandas Atendidas
+              </span>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white border border-[#E8EEEA] text-[#176B52]">
+                ✓ 18 Projetos de Lei Aprovados
+              </span>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white border border-[#E8EEEA] text-[#176B52]">
+                ✓ Fiscalização de R$ 12M em Obras
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Projetos em Destaque */}
+      <section className="py-12 px-4 max-w-6xl mx-auto w-full space-y-6" id="projetos">
+        <div className="flex items-end justify-between">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#176B52]">
+              Atuação Legislativa
+            </span>
+            <h2 className="font-heading text-xl font-bold text-[#172B27]">
+              Projetos de Lei e Ações em Tramitação
+            </h2>
+          </div>
+          <Link href="/legislativo">
+            <span className="text-xs font-bold text-[#176B52] hover:underline flex items-center gap-1">
+              Ver todos na íntegra <ArrowRight className="h-3.5 w-3.5" />
+            </span>
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-white border-[#E8EEEA] p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-xs font-bold text-[#176B52]">PL 084/2026</span>
+              <Badge variant="blue">Comissões</Badge>
+            </div>
+            <h3 className="font-bold text-sm text-[#172B27]">Wi-Fi Livre nos Bairros Periféricos</h3>
+            <p className="text-xs text-[#77847F] leading-relaxed">
+              Obriga a instalação de internet gratuita e estável em praças públicas e UBSs de regiões vulneráveis.
+            </p>
+          </Card>
+
+          <Card className="bg-white border-[#E8EEEA] p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-xs font-bold text-[#176B52]">REQ 312/2026</span>
+              <Badge variant="green">Aprovado</Badge>
+            </div>
+            <h3 className="font-bold text-sm text-[#172B27]">Auditoria nas Encostas da Zona Noroeste</h3>
+            <p className="text-xs text-[#77847F] leading-relaxed">
+              Requer prestação de contas sobre o cronograma de obras de contenção preventivas às chuvas de verão.
+            </p>
+          </Card>
+
+          <Card className="bg-white border-[#E8EEEA] p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-xs font-bold text-[#176B52]">IND 541/2026</span>
+              <Badge variant="amber">Em Trâmite</Badge>
+            </div>
+            <h3 className="font-bold text-sm text-[#172B27]">Sinalização e Faixa de Pedestres</h3>
+            <p className="text-xs text-[#77847F] leading-relaxed">
+              Indicação para a CET implantar redutores de velocidade na porta de duas escolas municipais.
+            </p>
+          </Card>
+        </div>
+      </section>
+
+      {/* Agenda Aberta ao Público */}
+      <section className="py-10 bg-white border-y border-[#E8EEEA] px-4" id="agenda">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#176B52]">
+              Transparência
+            </span>
+            <h2 className="font-heading text-xl font-bold text-[#172B27]">
+              Agenda Pública Parlamentar
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-[#F6F8F5] rounded-xl border border-[#E8EEEA] space-y-2 text-xs">
+              <div className="flex items-center justify-between font-mono text-[#77847F]">
+                <span>24/11 · 15:00</span>
+                <Badge variant="blue">Audiência Pública</Badge>
+              </div>
+              <div className="font-bold text-sm text-[#172B27]">Debate sobre o Plano Diretor</div>
+              <div className="text-[#77847F] flex items-center gap-1">
+                <MapPin className="h-3 w-3" /> Plenário da Câmara Municipal
+              </div>
+            </div>
+
+            <div className="p-4 bg-[#F6F8F5] rounded-xl border border-[#E8EEEA] space-y-2 text-xs">
+              <div className="flex items-center justify-between font-mono text-[#77847F]">
+                <span>26/11 · 09:30</span>
+                <Badge variant="amber">Visita de Fiscalização</Badge>
+              </div>
+              <div className="font-bold text-sm text-[#172B27]">Vistoria na Reforma da UPA</div>
+              <div className="text-[#77847F] flex items-center gap-1">
+                <MapPin className="h-3 w-3" /> Unidade Básica Zona Leste
+              </div>
+            </div>
+
+            <div className="p-4 bg-[#F6F8F5] rounded-xl border border-[#E8EEEA] space-y-2 text-xs">
+              <div className="flex items-center justify-between font-mono text-[#77847F]">
+                <span>28/11 · 14:00</span>
+                <Badge variant="green">Sessão Plenária</Badge>
+              </div>
+              <div className="font-bold text-sm text-[#172B27]">Votação de Projetos e Moções</div>
+              <div className="text-[#77847F] flex items-center gap-1">
+                <MapPin className="h-3 w-3" /> Câmara Municipal
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Formulário de Participação Cidadã */}
+      <section className="py-12 px-4 max-w-3xl mx-auto w-full space-y-6" id="participacao">
+        <div className="text-center space-y-1">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#176B52]">
+            Canal Aberto ao Munícipe
+          </span>
+          <h2 className="font-heading text-2xl font-bold text-[#172B27]">
+            Envie sua Solicitação, Ideia ou Reivindicação
+          </h2>
+          <p className="text-xs text-[#77847F] max-w-md mx-auto">
+            Todas as mensagens são triadas pelo gabinete e recebem número de protocolo formal.
+          </p>
+        </div>
+
+        {formSent ? (
+          <div className="p-6 bg-[#E8F3ED] rounded-xl border border-[#176B52]/30 text-center space-y-3">
+            <CheckCircle className="h-10 w-10 text-[#176B52] mx-auto" />
+            <h3 className="font-heading font-bold text-base text-[#172B27]">
+              Solicitação Enviada com Sucesso!
+            </h3>
+            <p className="text-xs text-[#77847F]">
+              Seu atendimento foi encaminhado à equipe de triagem. Em breve você receberá atualizações em seu contato.
+            </p>
+            <Button variant="secondary" size="sm" onClick={() => setFormSent(false)}>
+              Enviar Outra Mensagem
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl border border-[#E8EEEA] shadow-xs space-y-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="font-semibold block mb-1">Seu Nome Completo *</label>
+                <Input
+                  value={citizenName}
+                  onChange={(e) => setCitizenName(e.target.value)}
+                  placeholder="Ex.: Carlos Alberto"
+                  required
+                />
+              </div>
+              <div>
+                <label className="font-semibold block mb-1">Bairro / Cidade *</label>
+                <Input
+                  value={neighborhood}
+                  onChange={(e) => setNeighborhood(e.target.value)}
+                  placeholder="Ex.: Gonzaga · Santos"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="font-semibold block mb-1">Assunto / Descrição da Reivindicação *</label>
+              <Textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={4}
+                placeholder="Descreva o problema em seu bairro ou sua sugestão de projeto de lei..."
+                required
+              />
+            </div>
+
+            <Button type="submit" variant="primary" className="w-full font-bold">
+              <Send className="h-4 w-4 mr-1.5" /> Enviar ao Gabinete da Vereadora
+            </Button>
+          </form>
+        )}
+      </section>
+
+      {/* Rodapé Institucional */}
+      <footer className="mt-auto bg-white border-t border-[#E8EEEA] py-6 px-4 text-center text-xs text-[#77847F] space-y-1">
+        <div>Gabinete Digital 360° by DM IA Studio · Versão de Homologação</div>
+        <div className="text-[10px]">Câmara Municipal de Santos · Praça Mauá, s/n · Centro Histórico</div>
+      </footer>
+    </div>
+  );
+}

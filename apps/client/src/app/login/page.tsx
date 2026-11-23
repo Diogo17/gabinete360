@@ -197,6 +197,57 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+
+            {/* Acesso Rápido para Testes e Demonstração */}
+            <div className="pt-3 border-t border-paper-line space-y-2">
+              <span className="text-[10px] font-bold text-muted uppercase tracking-wider block text-center">
+                Perfis de Demonstração (Clique para Preencher):
+              </span>
+              <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail("mariana.costa@santos.sp.leg.br");
+                    setPassword("Gabinete@2026");
+                  }}
+                  className="p-1.5 rounded border border-line bg-paper/60 hover:bg-mint text-left font-medium text-ink transition-colors"
+                >
+                  <strong className="block text-green text-[10px]">Titular do Mandato</strong>
+                  <span>Mariana Costa</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail("ana.souza@gabinete.mariana.br");
+                    setPassword("Admin@2026");
+                  }}
+                  className="p-1.5 rounded border border-line bg-paper/60 hover:bg-mint text-left font-medium text-ink transition-colors"
+                >
+                  <strong className="block text-blue-700 text-[10px]">Chefe de Gabinete</strong>
+                  <span>Ana Souza</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail("rafael.lima@gabinete.mariana.br");
+                    setPassword("Assessor@2026");
+                  }}
+                  className="p-1.5 rounded border border-line bg-paper/60 hover:bg-mint text-left font-medium text-ink transition-colors"
+                >
+                  <strong className="block text-amber-700 text-[10px]">Assessor Jurídico</strong>
+                  <span>Rafael Lima</span>
+                </button>
+
+                <a
+                  href="/dashboard"
+                  className="p-1.5 rounded border border-green/30 bg-mint/40 hover:bg-mint text-center font-bold text-green grid place-items-center transition-colors text-[11px]"
+                >
+                  ⚡ Entrar sem Senha (Demo)
+                </a>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
