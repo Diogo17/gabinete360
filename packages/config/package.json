@@ -1,6 +1,7 @@
 {
   "name": "@gabinete360/config",
   "version": "0.1.0",
+  "type": "module",
   "private": true,
   "files": [
     "eslint",
