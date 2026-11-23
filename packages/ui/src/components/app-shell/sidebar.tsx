@@ -50,7 +50,7 @@ export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       <aside
         ref={ref}
         className={cn(
-          "flex h-screen w-60 shrink-0 flex-col border-r border-line bg-white select-none transition-all duration-200",
+          "flex h-screen w-60 shrink-0 flex-col border-r border-line bg-card select-none transition-all duration-200",
           className
         )}
         {...props}

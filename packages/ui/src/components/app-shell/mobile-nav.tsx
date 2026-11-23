@@ -40,12 +40,12 @@ export function MobileNav({ isOpen, onClose, ...sidebarProps }: MobileNavProps) 
       />
 
       {/* Drawer */}
-      <div className="relative z-10 flex h-full max-w-xs w-full flex-col bg-white shadow-xl animate-in slide-in-from-left duration-200">
+      <div className="relative z-10 flex h-full max-w-xs w-full flex-col bg-card shadow-xl animate-in slide-in-from-left duration-200">
         <div className="absolute top-3.5 right-3.5 z-20">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1.5 text-muted hover:text-ink hover:bg-paper"
+            className="rounded-md p-1.5 text-muted hover:text-foreground hover:bg-muted-bg"
             aria-label="Fechar navegação"
           >
             <X className="h-5 w-5" />

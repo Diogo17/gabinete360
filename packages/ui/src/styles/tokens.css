@@ -6,21 +6,22 @@
 
 @layer base {
   :root {
-    /* Palette from prototipo/index.html */
+    /* Palette from prototipo/index.html (Modo Claro / Off-White Acessível) */
     --ink: #172b27;
-    --muted: #77847f;
-    --line: #e8eeea;
-    --paper: #f6f8f5;
+    --muted: #64746f;
+    --line: #e2e8e4;
+    --paper: #f4f6f3; /* Fundo suave, não estoura branco puro no olho */
+    --surface: #ffffff;
     --green: #176b52;
     --green-hover: #125440;
     --green-dark: #0d3a2c;
     --mint: #e8f3ed;
-    --gold: #c78c38;
-    --red: #bb5d51;
-    --blue: #557a98;
+    --gold: #b87b28;
+    --red: #b94b3e;
+    --blue: #406c8f;
 
     /* Semantic tokens */
-    --background: #f6f8f5;
+    --background: #f4f6f3;
     --foreground: #172b27;
     --card: #ffffff;
     --card-foreground: #172b27;
@@ -30,27 +31,27 @@
     --primary-foreground: #ffffff;
     --secondary: #e8f3ed;
     --secondary-foreground: #176b52;
-    --muted-bg: #f0f3f1;
-    --muted-foreground: #77847f;
-    --border: #e8eeea;
-    --input: #e8eeea;
+    --muted-bg: #ebf0ec;
+    --muted-foreground: #64746f;
+    --border: #e2e8e4;
+    --input: #e2e8e4;
     --ring: #176b52;
 
     /* Status tags */
-    --tag-amber-bg: #fff4df;
-    --tag-amber-text: #9e702b;
-    --tag-blue-bg: #eaf1f6;
-    --tag-blue-text: #4c718e;
+    --tag-amber-bg: #fdf3e2;
+    --tag-amber-text: #966723;
+    --tag-blue-bg: #eaf1f7;
+    --tag-blue-text: #3c6585;
     --tag-green-bg: #e8f3ed;
-    --tag-green-text: #327255;
-    --tag-red-bg: #faecea;
-    --tag-red-text: #aa5147;
+    --tag-green-text: #28664b;
+    --tag-red-bg: #fbedeb;
+    --tag-red-text: #a13d31;
 
     /* Notice and Toast */
-    --notice-bg: #fbfcf5;
-    --notice-border: #e7ebdc;
-    --notice-text: #64724f;
-    --toast-bg: #193d31;
+    --notice-bg: #f9fbf4;
+    --notice-border: #e3ebd6;
+    --notice-text: #596b44;
+    --toast-bg: #15382d;
     --toast-text: #ffffff;
 
     /* Typography */
@@ -59,29 +60,152 @@
 
     /* Radii */
     --radius-sm: 8px;
-    --radius-md: 9px;
-    --radius-lg: 10px;
-    --radius-xl: 12px;
-    --radius-squircle: 11px;
-    --radius-pill: 20px;
+    --radius-md: 10px;
+    --radius-lg: 12px;
+    --radius-xl: 14px;
+    --radius-squircle: 12px;
+    --radius-pill: 9999px;
+  }
+
+  /* ==========================================================================
+     MODO ESCURO / NOTURNO (DARK MODE)
+     Ativado automaticamente com classe .dark ou preferência do sistema
+     ========================================================================== */
+  .dark,
+  [data-theme="dark"] {
+    --ink: #e5ece8;
+    --muted: #9aa8a3;
+    --line: #22352f;
+    --paper: #0f1916; /* Fundo escuro profundo e confortável */
+    --surface: #14221e; /* Superfície de cards com alto contraste e sem reflexo */
+    --green: #238b6d;
+    --green-hover: #2db38c;
+    --green-dark: #0a1512;
+    --mint: #173329;
+    --gold: #d49842;
+    --red: #d96253;
+    --blue: #6496bd;
+
+    /* Semantic tokens escuros */
+    --background: #0f1916;
+    --foreground: #e5ece8;
+    --card: #152420;
+    --card-foreground: #e5ece8;
+    --popover: #172824;
+    --popover-foreground: #e5ece8;
+    --primary: #238b6d;
+    --primary-foreground: #ffffff;
+    --secondary: #19382e;
+    --secondary-foreground: #60d2aa;
+    --muted-bg: #1a2c27;
+    --muted-foreground: #9aa8a3;
+    --border: #223832;
+    --input: #223832;
+    --ring: #2db38c;
+
+    /* Status tags escuras */
+    --tag-amber-bg: #2d2414;
+    --tag-amber-text: #f0b55c;
+    --tag-blue-bg: #172633;
+    --tag-blue-text: #82b9e3;
+    --tag-green-bg: #132a22;
+    --tag-green-text: #5ad49f;
+    --tag-red-bg: #301a18;
+    --tag-red-text: #f38578;
+
+    /* Notice and Toast escuros */
+    --notice-bg: #1c2618;
+    --notice-border: #2f4026;
+    --notice-text: #badca0;
+    --toast-bg: #09120f;
+    --toast-text: #e5ece8;
   }
 
   * {
-    border-color: var(--line);
+    border-color: var(--border);
     box-sizing: border-box;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* Tipografia Fluida Responsiva (Mobile -> Tablet -> Notebook/Desktop) */
+  html {
+    font-size: 14px; /* Base compacta e legível em celulares */
+  }
+
+  @media (min-width: 640px) {
+    html {
+      font-size: 14.5px; /* Tablet */
+    }
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      font-size: 15px; /* Notebook */
+    }
+  }
+
+  @media (min-width: 1440px) {
+    html {
+      font-size: 15.5px; /* Desktop amplo */
+    }
   }
 
   body {
-    background-color: var(--paper);
-    color: var(--ink);
+    background-color: var(--background);
+    color: var(--foreground);
     font-family: var(--font-dm-sans);
     margin: 0;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-manrope);
-    color: var(--ink);
+    color: var(--foreground);
+    letter-spacing: -0.02em;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  h1 {
+    font-size: clamp(1.35rem, 3.5vw, 1.85rem);
+    line-height: 1.25;
+  }
+
+  h2 {
+    font-size: clamp(1.15rem, 2.5vw, 1.45rem);
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: clamp(1rem, 2vw, 1.2rem);
+    line-height: 1.35;
+  }
+
+  p, span, label, input, textarea, select, button {
+    word-break: break-word;
+  }
+
+  /* Scrollbar estilizada e discreta para modo escuro/claro */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--muted);
+    opacity: 0.3;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--foreground);
+    opacity: 0.5;
   }
 }
