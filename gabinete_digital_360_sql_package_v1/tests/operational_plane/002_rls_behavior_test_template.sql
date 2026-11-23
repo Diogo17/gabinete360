@@ -1,0 +1,25 @@
+-- 002_rls_behavior_test_template.sql
+-- TEMPLATE: requer usuários Auth de teste e fixture de organizações/memberships.
+-- Não executar sem preencher os UUIDs de usuários/organizações de teste.
+-- Preferir provisionar os usuários pelo helper oficial/basejump ou fixture local.
+--
+-- Cenários obrigatórios:
+-- A) user_A tem membership ativo em org_A e enxerga apenas demandas de org_A.
+-- B) user_A não enxerga demandas de org_B.
+-- C) user_A não consegue inserir demanda em org_B.
+-- D) membership suspenso/revogado não enxerga dados do tenant.
+-- E) usuário sem concessão não lê reports.
+-- F) usuário com concessão válida lê somente a denúncia concedida.
+-- G) concessão expirada/revogada não permite leitura.
+-- H) tenant comum não altera memberships, papéis nem concessões de denúncia.
+--
+-- Exemplo de troca de contexto para cada caso, dentro de transação:
+--
+-- set local role authenticated;
+-- select set_config('request.jwt.claim.sub', '<UUID_USER_A>', true);
+-- select set_config('request.jwt.claims',
+--   json_build_object('sub','<UUID_USER_A>','role','authenticated')::text, true);
+-- select count(*) from public.demands; -- comparar com resultado esperado.
+--
+-- Importante: não simular o papel service_role nos testes de isolamento de usuário.
+-- O service_role ignora RLS; seu uso precisa de testes de autorização backend separados.

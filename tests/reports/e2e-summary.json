@@ -1,0 +1,44 @@
+{
+  "timestamp": "2026-11-22T23:11:57.867Z",
+  "durationMs": 118,
+  "totalTests": 102,
+  "passed": 102,
+  "failed": 0,
+  "skipped": 0,
+  "totalAssertions": 620,
+  "tiers": {
+    "tier1": {
+      "tier": 1,
+      "total": 51,
+      "passed": 51,
+      "failed": 0,
+      "skipped": 0,
+      "assertionsCount": 316
+    },
+    "tier2": {
+      "tier": 2,
+      "total": 42,
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "assertionsCount": 192
+    },
+    "tier3": {
+      "tier": 3,
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "assertionsCount": 47
+    },
+    "tier4": {
+      "tier": 4,
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "assertionsCount": 65
+    }
+  },
+  "failures": []
+}

@@ -1,0 +1,31 @@
+{
+  "name": "gabinete-digital-360-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Gabinete Digital 360° SaaS Multi-tenant Platform by DM IA Studio",
+  "author": "DM IA Studio",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@12.21.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "dev:client": "turbo run dev --filter=@gabinete360/client",
+    "dev:master": "turbo run dev --filter=@gabinete360/master",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "test:e2e": "node tests/e2e/harness/runner.ts",
+    "test:e2e:tier1": "node tests/e2e/harness/runner.ts --tier=1",
+    "test:e2e:tier2": "node tests/e2e/harness/runner.ts --tier=2",
+    "test:e2e:tier3": "node tests/e2e/harness/runner.ts --tier=3",
+    "test:e2e:tier4": "node tests/e2e/harness/runner.ts --tier=4"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

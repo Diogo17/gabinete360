@@ -1,0 +1,9 @@
+{
+  "extends": "@gabinete360/config/typescript/base",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "declaration": true
+  },
+  "include": ["src/**/*"]
+}

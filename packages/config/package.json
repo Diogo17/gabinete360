@@ -1,0 +1,18 @@
+{
+  "name": "@gabinete360/config",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "eslint",
+    "tailwind",
+    "typescript"
+  ],
+  "exports": {
+    "./eslint/base": "./eslint/base.js",
+    "./eslint/next": "./eslint/next.js",
+    "./tailwind": "./tailwind/tailwind.config.ts",
+    "./typescript/base": "./typescript/base.json",
+    "./typescript/nextjs": "./typescript/nextjs.json",
+    "./typescript/react-library": "./typescript/react-library.json"
+  }
+}

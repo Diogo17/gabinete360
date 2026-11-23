@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Palette from prototipo/index.html */
+    --ink: #172b27;
+    --muted: #77847f;
+    --line: #e8eeea;
+    --paper: #f6f8f5;
+    --green: #176b52;
+    --green-hover: #125440;
+    --green-dark: #0d3a2c;
+    --mint: #e8f3ed;
+    --gold: #c78c38;
+    --red: #bb5d51;
+    --blue: #557a98;
+
+    /* Semantic tokens */
+    --background: #f6f8f5;
+    --foreground: #172b27;
+    --card: #ffffff;
+    --card-foreground: #172b27;
+    --popover: #ffffff;
+    --popover-foreground: #172b27;
+    --primary: #176b52;
+    --primary-foreground: #ffffff;
+    --secondary: #e8f3ed;
+    --secondary-foreground: #176b52;
+    --muted-bg: #f0f3f1;
+    --muted-foreground: #77847f;
+    --border: #e8eeea;
+    --input: #e8eeea;
+    --ring: #176b52;
+
+    /* Status tags */
+    --tag-amber-bg: #fff4df;
+    --tag-amber-text: #9e702b;
+    --tag-blue-bg: #eaf1f6;
+    --tag-blue-text: #4c718e;
+    --tag-green-bg: #e8f3ed;
+    --tag-green-text: #327255;
+    --tag-red-bg: #faecea;
+    --tag-red-text: #aa5147;
+
+    /* Notice and Toast */
+    --notice-bg: #fbfcf5;
+    --notice-border: #e7ebdc;
+    --notice-text: #64724f;
+    --toast-bg: #193d31;
+    --toast-text: #ffffff;
+
+    /* Typography */
+    --font-manrope: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-dm-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    /* Radii */
+    --radius-sm: 8px;
+    --radius-md: 9px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+    --radius-squircle: 11px;
+    --radius-pill: 20px;
+  }
+
+  * {
+    border-color: var(--line);
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-dm-sans);
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-manrope);
+    color: var(--ink);
+  }
+}

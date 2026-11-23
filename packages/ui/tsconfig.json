@@ -1,0 +1,10 @@
+{
+  "extends": "@gabinete360/config/typescript/react-library",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*"]
+}
