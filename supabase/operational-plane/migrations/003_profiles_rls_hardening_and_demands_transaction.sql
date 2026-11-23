@@ -9,9 +9,10 @@
 begin;
 
 -- ---------------------------------------------------------------------
--- 1. Hardening de RLS para a tabela public.profiles
+-- 1. Hardening de RLS para a tabela public.profiles (Idempotente)
 -- ---------------------------------------------------------------------
 drop policy if exists profiles_select_all on public.profiles;
+drop policy if exists profiles_select_organization_or_self on public.profiles;
 
 -- Política restritiva: Usuário só pode ler seu próprio perfil OU perfis de colegas da mesma organização
 create policy profiles_select_organization_or_self on public.profiles
