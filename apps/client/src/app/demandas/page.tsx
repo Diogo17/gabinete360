@@ -46,6 +46,7 @@ import {
   type DemoDemand,
 } from "../../lib/mock-data";
 import { demandSchema, validateForm } from "../../lib/validation/schemas";
+import { createDemandAction, getDemandsAction } from "../../lib/actions/demands";
 
 export default function DemandasPage() {
   const [demands, setDemands] = useState<DemoDemand[]>(DEMO_DEMANDS);
@@ -64,6 +65,44 @@ export default function DemandasPage() {
   const [priority, setPriority] = useState("normal");
   const [description, setDescription] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Carrega demandas do Supabase ao montar
+  React.useEffect(() => {
+    async function loadRealDemands() {
+      try {
+        const res = await getDemandsAction();
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped: DemoDemand[] = res.data.map((d: any) => ({
+            id: d.id,
+            organization_id: d.organization_id,
+            workspace_id: d.workspace_id,
+            protocol: `DEM-${d.id.slice(0, 8).toUpperCase()}`,
+            citizen_name: d.citizen_name || "Munícipe",
+            preferred_channel: "whatsapp",
+            title: d.title,
+            description: d.description || "",
+            category: "iluminacao",
+            priority: "normal",
+            status: d.status as any,
+            classification: "public",
+            neighborhood: "Bairro Central",
+            location_text: "Santos - SP",
+            assigned_to: "usr-ana-souza",
+            assigned_name: "Ana Souza",
+            due_at: d.due_at || new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+            events: [],
+            created_at: d.created_at,
+            updated_at: d.updated_at || d.created_at,
+          }));
+          setDemands((prev) => [...mapped, ...prev]);
+        }
+      } catch (e) {
+        console.warn("Falha ao carregar demandas do Supabase:", e);
+      }
+    }
+    loadRealDemands();
+  }, []);
 
   const filteredDemands = demands.filter((d) => {
     const matchSearch =
@@ -83,7 +122,7 @@ export default function DemandasPage() {
     return matchSearch && matchStatus && matchCategory;
   });
 
-  const handleCreateDemand = (e: React.FormEvent) => {
+  const handleCreateDemand = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = validateForm(demandSchema, {
       title,
@@ -100,35 +139,57 @@ export default function DemandasPage() {
       return;
     }
 
-    const newDemand: DemoDemand = {
-      id: `dem-${Date.now()}`,
-      organization_id: "org-gabinete-mariana",
-      workspace_id: "wks-santos-01",
-      protocol: generateNextProtocol(),
-      citizen_name: citizenName || "Munícipe Geral",
-      preferred_channel: "whatsapp",
-      title,
-      description,
-      category: category as any,
-      priority: priority as any,
-      status: "received",
-      classification: "public",
-      neighborhood,
-      location_text: neighborhood,
-      assigned_to: "usr-ana-souza",
-      assigned_name: "Ana Souza",
-      due_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-      events: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    setIsSubmitting(true);
 
-    setDemands([newDemand, ...demands]);
-    setIsNewModalOpen(false);
-    setTitle("");
-    setCitizenName("");
-    setDescription("");
-    setFormErrors({});
+    try {
+      // 1. Grava diretamente no Supabase via Server Action
+      const saveResult = await createDemandAction({
+        title,
+        description,
+        citizen_name: citizenName,
+        citizen_neighborhood: neighborhood,
+        category_key: category,
+        priority: priority === "normal" ? "medium" : (priority as any),
+      });
+
+      const protocolCode = saveResult.data?.id
+        ? `DEM-${saveResult.data.id.slice(0, 8).toUpperCase()}`
+        : generateNextProtocol();
+
+      const newDemand: DemoDemand = {
+        id: saveResult.data?.id || `dem-${Date.now()}`,
+        organization_id: "org-gabinete-mariana",
+        workspace_id: "wks-santos-01",
+        protocol: protocolCode,
+        citizen_name: citizenName || "Munícipe Geral",
+        preferred_channel: "whatsapp",
+        title,
+        description,
+        category: category as any,
+        priority: priority as any,
+        status: "received",
+        classification: "public",
+        neighborhood,
+        location_text: neighborhood,
+        assigned_to: "usr-ana-souza",
+        assigned_name: "Ana Souza",
+        due_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        events: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      setDemands([newDemand, ...demands]);
+      setIsNewModalOpen(false);
+      setTitle("");
+      setCitizenName("");
+      setDescription("");
+      setFormErrors({});
+    } catch (err) {
+      console.error("Erro ao persistir demanda:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleStatusChange = (id: string, newStatus: DemoDemand["status"]) => {
@@ -536,8 +597,8 @@ export default function DemandasPage() {
             <Button variant="ghost" type="button" onClick={() => setIsNewModalOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="primary" type="submit">
-              Salvar Atendimento
+            <Button variant="primary" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Gravando no Supabase..." : "Salvar Atendimento"}
             </Button>
           </div>
         </form>
