@@ -15,6 +15,61 @@ function getAdminSupabase() {
   return createClient(url, serviceKey);
 }
 
+export async function GET(req: NextRequest) {
+  try {
+    const gabineteId = req.nextUrl.searchParams.get("gabineteId");
+    if (!gabineteId) {
+      return NextResponse.json({ error: "gabineteId obrigatório" }, { status: 400 });
+    }
+
+    const supabase = getAdminSupabase();
+    if (!supabase) {
+      return NextResponse.json({ status: "disconnected" });
+    }
+
+    const { data: inst } = await supabase
+      .from("whatsapp_instances")
+      .select("id, instance_name, instance_token, status, whatsapp_nodes(base_url, global_token)")
+      .eq("gabinete_id", gabineteId)
+      .maybeSingle();
+
+    if (!inst || !inst.instance_token) {
+      return NextResponse.json({ status: "disconnected" });
+    }
+
+    const nodeData = Array.isArray(inst.whatsapp_nodes)
+      ? inst.whatsapp_nodes[0]
+      : inst.whatsapp_nodes;
+    const nodeConfig: WhatsAppNodeConfig | undefined = nodeData
+      ? { baseUrl: nodeData.base_url, globalToken: nodeData.global_token }
+      : undefined;
+
+    const stateRes = await whatsappClient.getConnectionState(
+      inst.instance_name,
+      inst.instance_token,
+      nodeConfig
+    );
+    const rawState = stateRes?.instance?.state;
+    const mappedStatus =
+      rawState === "open" ? "connected" : rawState === "close" ? "disconnected" : "connecting";
+
+    if (mappedStatus !== inst.status) {
+      await supabase
+        .from("whatsapp_instances")
+        .update({
+          status: mappedStatus,
+          ...(mappedStatus === "connected" ? { last_connected_at: new Date().toISOString(), qr_code: null } : {}),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", inst.id);
+    }
+
+    return NextResponse.json({ status: mappedStatus });
+  } catch {
+    return NextResponse.json({ status: "connecting" });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

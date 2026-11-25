@@ -85,6 +85,26 @@ export default function WhatsAppPage() {
   }, []);
 
   useEffect(() => {
+    if (!gabineteId || status !== "connecting") return;
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/whatsapp/instance?gabineteId=${encodeURIComponent(gabineteId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === "connected") {
+            setStatus("connected");
+            setQrCode(null);
+            setPairingCode(null);
+          }
+        }
+      } catch {
+        // ignore transient polling errors
+      }
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [gabineteId, status]);
+
+  useEffect(() => {
     if (!selectedContact) return;
     const supabase = createClient();
     supabase
