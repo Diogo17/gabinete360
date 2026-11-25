@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { whatsappClient } from "@/lib/whatsapp/client";
+import { whatsappClient, type WhatsAppNodeConfig } from "@/lib/whatsapp/client";
 
 const SendMessageSchema = z.object({
-  instanceName: z.string().min(1),
-  instanceToken: z.string().min(1),
+  gabineteId: z.string().uuid(),
   number: z.string().min(8),
   text: z.string().min(1).max(4096),
 });
 
+function getAdminSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return null;
+  return createClient(url, serviceKey);
+}
+
 /**
- * Envia mensagem aplicando delay randômico anti-ban (2.5s a 5.5s) e presença "composing".
+ * Envia mensagem buscando automaticamente instance_name, instance_token e node no Supabase,
+ * aplicando delay randômico anti-ban (2.5s a 5.5s) e presença "composing".
  */
 export async function POST(req: NextRequest) {
   try {
@@ -20,14 +28,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { instanceName, instanceToken, number, text } = parsed.data;
+    const { gabineteId, number, text } = parsed.data;
+    const supabase = getAdminSupabase();
+    if (!supabase) {
+      return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY não configurada" }, { status: 500 });
+    }
+
+    const { data: instanceRow, error: instErr } = await supabase
+      .from("whatsapp_instances")
+      .select("id, instance_name, instance_token, whatsapp_nodes(base_url, global_token)")
+      .eq("gabinete_id", gabineteId)
+      .maybeSingle();
+
+    if (instErr || !instanceRow || !instanceRow.instance_token) {
+      return NextResponse.json({ error: "Instância WhatsApp não encontrada para este gabinete." }, { status: 404 });
+    }
+
+    const nodeData = Array.isArray(instanceRow.whatsapp_nodes)
+      ? instanceRow.whatsapp_nodes[0]
+      : instanceRow.whatsapp_nodes;
+
+    const nodeConfig: WhatsAppNodeConfig | undefined = nodeData
+      ? { baseUrl: nodeData.base_url, globalToken: nodeData.global_token }
+      : undefined;
+
     const antiBanDelayMs = Math.floor(2500 + Math.random() * 3000);
 
-    const result = await whatsappClient.sendText(instanceName, instanceToken, {
-      number,
-      text,
-      delayMs: antiBanDelayMs,
-    });
+    const result = await whatsappClient.sendText(
+      instanceRow.instance_name,
+      instanceRow.instance_token,
+      { number, text, delayMs: antiBanDelayMs },
+      nodeConfig
+    );
 
     return NextResponse.json({
       ok: true,
