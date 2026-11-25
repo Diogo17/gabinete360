@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ClientShell } from "../../components/client-shell";
+import { useOrganization } from "../../lib/tenant/context";
+import { createClient } from "../../lib/supabase/client";
+import { checkDocumentCompetency } from "../../lib/legislative/competency";
 import {
   Card,
   CardHeader,
