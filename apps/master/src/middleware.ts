@@ -28,10 +28,10 @@ export async function middleware(request: NextRequest) {
   // If on login page
   if (isAuthRoute) {
     if (hasAdminAuth && hasMfaVerified) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/master", request.url));
     }
     if (hasAdminAuth && !hasMfaVerified) {
-      return NextResponse.redirect(new URL("/mfa", request.url));
+      return NextResponse.redirect(new URL("/master/mfa", request.url));
     }
     return supabaseResponse;
   }
@@ -39,10 +39,10 @@ export async function middleware(request: NextRequest) {
   // If on MFA challenge page
   if (isMfaRoute) {
     if (!hasAdminAuth) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(new URL("/master/login", request.url));
     }
     if (hasMfaVerified) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/master", request.url));
     }
     return supabaseResponse;
   }
@@ -64,7 +64,7 @@ export async function middleware(request: NextRequest) {
   if (isProtectedRoute) {
     // If not authenticated, redirect to login with error parameter
     if (!hasAdminAuth) {
-      const loginUrl = new URL("/login", request.url);
+      const loginUrl = new URL("/master/login", request.url);
       loginUrl.searchParams.set("error", "unauthorized");
       loginUrl.searchParams.set("redirectedFrom", pathname);
       return NextResponse.redirect(loginUrl);
@@ -72,7 +72,7 @@ export async function middleware(request: NextRequest) {
 
     // If authenticated but MFA has not been satisfied, force MFA step-up
     if (!hasMfaVerified) {
-      return NextResponse.redirect(new URL("/mfa", request.url));
+      return NextResponse.redirect(new URL("/master/mfa", request.url));
     }
   }
 
