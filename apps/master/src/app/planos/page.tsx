@@ -359,15 +359,14 @@ export default function PlansAndModulesPage() {
                   </div>
                 )}
                 <div>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono text-muted uppercase font-bold">
+                  <CardHeader className="flex-col items-start gap-2 pb-3">
+                    <div className="flex w-full items-center justify-between">
+                      <span className="text-[10px] font-mono text-muted uppercase font-bold tracking-wider">
                         {plan.plan_key}
                       </span>
-                      <Badge variant="neutral">Demonstração</Badge>
                     </div>
-                    <CardTitle className="mt-1 text-base font-bold font-heading">{plan.name}</CardTitle>
-                    <p className="text-xs text-muted mt-1 leading-snug">{plan.description}</p>
+                    <CardTitle className="text-base font-bold font-heading">{plan.name}</CardTitle>
+                    <p className="text-xs text-muted leading-snug">{plan.description}</p>
                   </CardHeader>
 
                   <CardContent className="space-y-4 pt-0">
