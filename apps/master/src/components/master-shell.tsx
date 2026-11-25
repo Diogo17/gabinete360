@@ -138,7 +138,21 @@ export function MasterShell({
       navGroups={navGroups}
       breadcrumbs={breadcrumbs || defaultBreadcrumbs}
       notificationCount={2}
-      topbarActions={actions}
+      topbarActions={
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              sessionStorage.removeItem("gabinete360_superuser_panel_choice");
+              window.location.href = "/master?selectPanel=1";
+            }}
+            className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-line bg-paper text-ink hover:bg-mint hover:text-green transition-colors cursor-pointer"
+          >
+            Trocar Painel
+          </button>
+          {actions}
+        </div>
+      }
       showDemoWatermark={false}
       onLogoutClick={async () => {
         await adminSignOut();

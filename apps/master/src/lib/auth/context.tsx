@@ -33,9 +33,12 @@ export function MasterAdminProvider({
   const signOut = useCallback(async () => {
     setIsLoading(true);
     try {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("gabinete360_superuser_panel_choice");
+      }
       await adminSignOut();
     } catch {
-      window.location.href = "/login";
+      window.location.href = "/master/login";
     } finally {
       setIsLoading(false);
     }

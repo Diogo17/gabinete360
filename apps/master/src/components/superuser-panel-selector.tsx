@@ -15,11 +15,17 @@ export interface SuperuserPanelSelectorProps {
 export function SuperuserPanelSelector({
   userEmail,
   userName,
-  clientAppUrl = process.env.NEXT_PUBLIC_CLIENT_APP_URL || "http://localhost:3000",
+  clientAppUrl = process.env.NEXT_PUBLIC_CLIENT_APP_URL || "",
 }: SuperuserPanelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("selectPanel") === "1") {
+      sessionStorage.removeItem(PANEL_CHOICE_STORAGE_KEY);
+      setIsOpen(true);
+      return;
+    }
     const savedChoice = sessionStorage.getItem(PANEL_CHOICE_STORAGE_KEY);
     if (!savedChoice) {
       setIsOpen(true);
@@ -31,9 +37,9 @@ export function SuperuserPanelSelector({
     setIsOpen(false);
 
     if (panel === "demo") {
-      window.location.href = `${clientAppUrl}?mode=demo`;
+      window.location.href = `${clientAppUrl}/?mode=demo`;
     } else if (panel === "superuser") {
-      window.location.href = "/administradores";
+      window.location.href = "/master/administradores";
     }
     // "master" stays on current Master Dashboard
   };
