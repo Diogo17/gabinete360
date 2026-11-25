@@ -47,12 +47,47 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const created = await whatsappClient.createInstance(instanceName, webhookUrl, selectedNode);
-    const token = created.Auth?.token ?? created.instance?.token;
+    let token: string | undefined;
+
+    if (supabase) {
+      const { data: existingInst } = await supabase
+        .from("whatsapp_instances")
+        .select("instance_token")
+        .eq("gabinete_id", gabineteId)
+        .maybeSingle();
+      if (existingInst?.instance_token) {
+        token = existingInst.instance_token;
+      }
+    }
+
+    if (!token) {
+      try {
+        const created = await whatsappClient.createInstance(instanceName, webhookUrl, selectedNode);
+        token = created.Auth?.token ?? created.instance?.token;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
+        if (!msg.includes("(409)")) throw err;
+        // Instância já existe no Sprite (ex.: tentativa anterior); busca token ou recria
+        const listRes = await fetch(
+          `${(selectedNode?.baseUrl || process.env.WHATSAPP_API_URL || "https://gabinete-360-whatsapp-b6xo7.sprites.app")}/instance/fetchInstances`,
+          {
+            headers: {
+              apikey: selectedNode?.globalToken || process.env.WHATSAPP_API_GLOBAL_TOKEN || "gab360_global_tok3n_2026_prod",
+            },
+            cache: "no-store",
+          }
+        );
+        if (listRes.ok) {
+          const instances = (await listRes.json()) as Array<{ name?: string; Auth?: { token?: string } }>;
+          const found = instances.find((i) => i.name === instanceName);
+          token = found?.Auth?.token;
+        }
+      }
+    }
 
     if (!token) {
       return NextResponse.json(
-        { error: "Token da instância não retornado pela API do WhatsApp." },
+        { error: "Token da instância não encontrado na API do WhatsApp." },
         { status: 502 }
       );
     }
@@ -64,7 +99,7 @@ export async function POST(req: NextRequest) {
       selectedNode
     );
 
-    const qrCodeBase64 = connectData.base64 ?? created.qrcode?.base64 ?? null;
+    const qrCodeBase64 = connectData.base64 ?? null;
     const pairingCode = connectData.pairingCode ?? null;
 
     if (supabase) {
