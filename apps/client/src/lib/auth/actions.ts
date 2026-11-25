@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "../supabase/server";
 
 export interface AuthActionResult {
@@ -43,13 +44,18 @@ export async function signInWithOtp(email: string): Promise<AuthActionResult> {
     return { success: false, error: "E-mail inválido." };
   }
 
+  const headersList = await headers();
+  const host = headersList.get("x-forwarded-host") || headersList.get("host");
+  const proto = headersList.get("x-forwarded-proto") || "https";
+  const origin =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (host ? `${proto}://${host}` : "http://localhost:3000");
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${
-        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-      }/auth/callback`,
+      emailRedirectTo: `${origin}/auth/callback`,
     },
   });
 
