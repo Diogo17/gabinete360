@@ -17,6 +17,7 @@ import {
   Td,
   NoticeBanner,
   Button,
+  DemoWatermark,
 } from "@gabinete360/ui";
 import {
   Users,
