@@ -36,5 +36,4 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://efughosfkbirbjaqwyya.supabase.co' }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_ftto26963Xzb_0loxD0p2w_9PPeleUz' }}
-          NEXT_PUBLIC_ENABLE_DEMO_MODE: "true"
         run: pnpm turbo run build
