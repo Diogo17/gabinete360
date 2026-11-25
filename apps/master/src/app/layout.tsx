@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { MasterAdminProvider } from "../lib/auth/context";
 
@@ -18,6 +19,7 @@ export default function RootLayout({
         <MasterAdminProvider>
           {children}
         </MasterAdminProvider>
+        <Analytics />
       </body>
     </html>
   );

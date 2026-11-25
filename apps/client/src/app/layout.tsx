@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { OrganizationProvider } from "../lib/tenant/context";
 
@@ -18,6 +19,7 @@ export default function RootLayout({
         <OrganizationProvider>
           {children}
         </OrganizationProvider>
+        <Analytics />
       </body>
     </html>
   );
