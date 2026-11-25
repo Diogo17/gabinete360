@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ClientShell } from "../../components/client-shell";
+import { useOrganization } from "../../lib/tenant/context";
+import { createClient } from "../../lib/supabase/client";
 import {
   Card,
   CardHeader,
@@ -24,10 +26,24 @@ import {
   CheckCircle,
   AlertTriangle,
 } from "lucide-react";
-import { DEMO_TASKS, type DemoTask } from "../../lib/mock-data";
+import { type DemoTask } from "../../lib/mock-data";
 
 export default function TarefasPage() {
-  const [tasks, setTasks] = useState<DemoTask[]>(DEMO_TASKS);
+  const { organization } = useOrganization();
+  const [tasks, setTasks] = useState<DemoTask[]>([]);
+
+  useEffect(() => {
+    if (!organization?.id) return;
+    const supabase = createClient();
+    supabase
+      .from("tasks")
+      .select("*")
+      .eq("organization_id", organization.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        if (data) setTasks(data as DemoTask[]);
+      });
+  }, [organization?.id]);
   const [filter, setFilter] = useState("all");
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 

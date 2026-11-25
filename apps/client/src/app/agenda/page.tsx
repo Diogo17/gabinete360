@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ClientShell } from "../../components/client-shell";
+import { useOrganization } from "../../lib/tenant/context";
+import { createClient } from "../../lib/supabase/client";
 import {
   Card,
   CardHeader,
@@ -26,13 +28,24 @@ import {
   Grid3X3,
   CalendarRange,
 } from "lucide-react";
-import {
-  DEMO_AGENDA_EVENTS,
-  type DemoAgendaEvent,
-} from "../../lib/mock-data";
+import { type DemoAgendaEvent } from "../../lib/mock-data";
 
 export default function AgendaPage() {
-  const [events, setEvents] = useState<DemoAgendaEvent[]>(DEMO_AGENDA_EVENTS);
+  const { organization } = useOrganization();
+  const [events, setEvents] = useState<DemoAgendaEvent[]>([]);
+
+  useEffect(() => {
+    if (!organization?.id) return;
+    const supabase = createClient();
+    supabase
+      .from("agenda_events")
+      .select("*")
+      .eq("organization_id", organization.id)
+      .order("starts_at", { ascending: true })
+      .then(({ data }) => {
+        if (data) setEvents(data as DemoAgendaEvent[]);
+      });
+  }, [organization?.id]);
   const [typeFilter, setTypeFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"month" | "week" | "list">("month");
   const [selectedDay, setSelectedDay] = useState<number>(23);
