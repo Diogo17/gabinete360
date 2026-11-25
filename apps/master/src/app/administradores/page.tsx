@@ -323,7 +323,7 @@ export default function AdminsManagementPage() {
               Diretório com status de MFA e último login registrado
             </p>
           </div>
-          <Badge variant="blue">DEMONSTRAÇÃO</Badge>
+
         </CardHeader>
         <CardContent className="p-0">
           <Table>
