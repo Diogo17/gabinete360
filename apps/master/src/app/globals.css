@@ -1,1 +1,33 @@
 @import "@gabinete360/ui/styles";
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0f1715;
+  color: #e6efec;
+}
+
+html.dark .bg-paper {
+  background-color: #0f1715 !important;
+}
+
+html.dark .bg-white,
+html.dark .bg-paper-card {
+  background-color: #16221f !important;
+  color: #e6efec !important;
+}
+
+html.dark .text-ink {
+  color: #e6efec !important;
+}
+
+html.dark .text-muted {
+  color: #9cb0a9 !important;
+}
+
+html.dark .border-line,
+html.dark .border-paper-line {
+  border-color: #263833 !important;
+}
