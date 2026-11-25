@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { Organization, Membership, UserProfile, UserRole } from "@gabinete360/types";
+import { createClient } from "../supabase/client";
 
 export interface OrganizationContextValue {
   organization: Organization | null;
@@ -15,104 +16,122 @@ export interface OrganizationContextValue {
   refreshMembership: () => Promise<void>;
 }
 
-const DEFAULT_DEMO_ORGS: Organization[] = [
-  {
-    id: "org-mariana-costa",
-    platform_tenant_id: "ten-mariana-costa",
-    name: "Gabinete Mariana Costa",
-    slug: "mariana-costa",
-    kind: "individual",
-    status: "active",
-    parliamentarian_name: "Mariana Costa",
-    municipality: "Santos",
-    state: "SP",
-    created_at: new Date("2026-01-15T10:00:00Z").toISOString(),
-  },
-  {
-    id: "org-camara-santos",
-    platform_tenant_id: "ten-camara-santos",
-    name: "Câmara Municipal de Santos",
-    slug: "camara-santos",
-    kind: "chamber",
-    status: "active",
-    parliamentarian_name: "Mesa Diretora",
-    municipality: "Santos",
-    state: "SP",
-    created_at: new Date("2026-01-10T10:00:00Z").toISOString(),
-  },
-  {
-    id: "org-demo-uuid",
-    platform_tenant_id: "ten-demo-uuid",
-    name: "Gabinete Modelo Demonstração",
-    slug: "gabinete-demo",
-    kind: "individual",
-    status: "active",
-    parliamentarian_name: "Gabinete Demonstrativo",
-    municipality: "São Paulo",
-    state: "SP",
-    created_at: new Date("2026-01-01T10:00:00Z").toISOString(),
-  },
-];
-
-const DEFAULT_MEMBERSHIP: Membership = {
-  id: "mem-mariana-owner",
-  organization_id: "org-mariana-costa",
-  user_id: "usr-mariana-costa",
-  role: "owner",
-  status: "active",
-  joined_at: new Date("2026-01-15T10:00:00Z").toISOString(),
-  created_at: new Date("2026-01-15T10:00:00Z").toISOString(),
-  profile: {
-    user_id: "usr-mariana-costa",
-    display_name: "Mariana Costa",
-    avatar_path: null,
-    phone: "(13) 99876-5432",
-    locale: "pt-BR",
-    role_title: "Vereadora · 2º Mandato",
-  },
-};
-
 const OrganizationContext = createContext<OrganizationContextValue | undefined>(undefined);
 
 export interface OrganizationProviderProps {
   children: React.ReactNode;
   initialSlug?: string;
-  initialOrganization?: Organization;
-  initialMembership?: Membership;
+  initialOrganization?: Organization | null;
+  initialMembership?: Membership | null;
+  initialOrganizations?: Organization[];
 }
 
 export function OrganizationProvider({
   children,
-  initialSlug = "mariana-costa",
-  initialOrganization,
-  initialMembership,
+  initialSlug = "",
+  initialOrganization = null,
+  initialMembership = null,
+  initialOrganizations = [],
 }: OrganizationProviderProps) {
   const [slug, setSlug] = useState<string>(initialSlug);
-  const [availableOrganizations] = useState<Organization[]>(DEFAULT_DEMO_ORGS);
-  const [organization, setOrganization] = useState<Organization | null>(() => {
-    if (initialOrganization) return initialOrganization;
-    return DEFAULT_DEMO_ORGS.find((org) => org.slug === initialSlug) ?? DEFAULT_DEMO_ORGS[0] ?? null;
-  });
-  const [membership, setMembership] = useState<Membership | null>(() => {
-    return initialMembership || DEFAULT_MEMBERSHIP;
-  });
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [availableOrganizations, setAvailableOrganizations] = useState<Organization[]>(initialOrganizations);
+  const [organization, setOrganization] = useState<Organization | null>(initialOrganization);
+  const [membership, setMembership] = useState<Membership | null>(initialMembership);
+  const [isLoading, setIsLoading] = useState<boolean>(!initialOrganization);
+
+  // Fetch real organizations and membership from Supabase on mount
+  useEffect(() => {
+    if (initialOrganization && initialMembership) return;
+
+    async function loadUserContext() {
+      setIsLoading(true);
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        // Fetch active memberships with organization data
+        const { data: memberships, error: memErr } = await supabase
+          .from("memberships")
+          .select("*, organization:organizations(*), profile:profiles(*)")
+          .eq("user_id", user.id)
+          .eq("status", "active");
+
+        if (memErr || !memberships || memberships.length === 0) {
+          setIsLoading(false);
+          return;
+        }
+
+        // Set available organizations from memberships
+        const orgs = memberships
+          .map((m: any) => m.organization)
+          .filter(Boolean) as Organization[];
+        setAvailableOrganizations(orgs);
+
+        // Select first organization or match initial slug
+        const targetMembership = initialSlug
+          ? memberships.find((m: any) => m.organization?.slug === initialSlug) || memberships[0]
+          : memberships[0];
+
+        if (targetMembership) {
+          setOrganization(targetMembership.organization || null);
+          setSlug(targetMembership.organization?.slug || "");
+          setMembership({
+            id: targetMembership.id,
+            organization_id: targetMembership.organization_id,
+            user_id: targetMembership.user_id,
+            role: targetMembership.role,
+            status: targetMembership.status,
+            joined_at: targetMembership.joined_at,
+            created_at: targetMembership.created_at,
+            profile: targetMembership.profile || null,
+          });
+        }
+      } catch (err) {
+        console.error("Erro ao carregar contexto de organização:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadUserContext();
+  }, [initialOrganization, initialMembership, initialSlug]);
 
   const switchOrganization = useCallback(async (targetSlug: string) => {
     setIsLoading(true);
     try {
       const targetOrg = availableOrganizations.find((o) => o.slug === targetSlug);
-      if (targetOrg) {
-        setSlug(targetSlug);
-        setOrganization(targetOrg);
-        setMembership((prev) =>
-          prev
-            ? {
-                ...prev,
-                organization_id: targetOrg.id,
-              }
-            : null
-        );
+      if (!targetOrg) return;
+
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: mem } = await supabase
+        .from("memberships")
+        .select("*, profile:profiles(*)")
+        .eq("user_id", user.id)
+        .eq("organization_id", targetOrg.id)
+        .eq("status", "active")
+        .maybeSingle();
+
+      setSlug(targetSlug);
+      setOrganization(targetOrg);
+      if (mem) {
+        setMembership({
+          id: mem.id,
+          organization_id: mem.organization_id,
+          user_id: mem.user_id,
+          role: mem.role,
+          status: mem.status,
+          joined_at: mem.joined_at,
+          created_at: mem.created_at,
+          profile: mem.profile || null,
+        });
       }
     } finally {
       setIsLoading(false);
@@ -122,11 +141,34 @@ export function OrganizationProvider({
   const refreshMembership = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Refresh logic hook
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !organization) return;
+
+      const { data: mem } = await supabase
+        .from("memberships")
+        .select("*, profile:profiles(*)")
+        .eq("user_id", user.id)
+        .eq("organization_id", organization.id)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (mem) {
+        setMembership({
+          id: mem.id,
+          organization_id: mem.organization_id,
+          user_id: mem.user_id,
+          role: mem.role,
+          status: mem.status,
+          joined_at: mem.joined_at,
+          created_at: mem.created_at,
+          profile: mem.profile || null,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [organization]);
 
   const value: OrganizationContextValue = {
     organization,

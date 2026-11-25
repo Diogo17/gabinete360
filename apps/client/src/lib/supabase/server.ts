@@ -10,13 +10,14 @@ type CookieToSet = {
 export async function createClient() {
   const cookieStore = await cookies();
 
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    "https://efughosfkbirbjaqwyya.supabase.co";
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    "sb_publishable_ftto26963Xzb_0loxD0p2w_9PPeleUz";
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY são obrigatórios. Configure as variáveis de ambiente."
+    );
+  }
 
   return createServerClient(supabaseUrl, supabaseKey, {
     cookies: {

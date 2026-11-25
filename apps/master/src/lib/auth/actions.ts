@@ -22,30 +22,17 @@ export async function adminLogin(formData: FormData): Promise<MasterAuthResult> 
     return { success: false, error: "Informe credenciais de administrador." };
   }
 
-  // Verificação de ambiente: credenciais de demonstração são expressamente proibidas em produção
-  const isProduction = process.env.NODE_ENV === "production";
-  const demoModeAllowed = !isProduction && process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-  const DEMO_MASTER_CREDENTIALS: Record<string, string> = {
-    "admin@dmiastudio.com": "Master@2026",
-    "suporte@dmiastudio.com": "Suporte@2026",
-  };
-
-  const isDemoAdmin = demoModeAllowed && DEMO_MASTER_CREDENTIALS[email.toLowerCase()] === password;
-
-  if (!isDemoAdmin) {
-    const supabase = await createClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      return {
-        success: false,
-        error: error.message || "Acesso administrativo negado.",
-      };
-    }
+  if (error) {
+    return {
+      success: false,
+      error: error.message || "Acesso administrativo negado.",
+    };
   }
 
   // All Master Admins require mandatory TOTP MFA step-up verification
@@ -104,23 +91,12 @@ export async function verifyMfa(code: string): Promise<MasterAuthResult> {
         return { success: false, error: "Código TOTP inválido ou expirado." };
       }
     } else {
-      // Usuário autenticado sem fator TOTP cadastrado
-      const isProduction = process.env.NODE_ENV === "production";
-      if (isProduction) {
-        return { success: false, error: "MFA obrigatório não configurado para este administrador em produção." };
-      }
-      // Em desenvolvimento/homologação com demo code
-      if (sanitizedCode !== "123456") {
-        return { success: false, error: "Código TOTP de teste inválido." };
-      }
+      // Usuário autenticado sem fator TOTP cadastrado — MFA obrigatório para todos os admins
+      return { success: false, error: "MFA obrigatório não configurado para este administrador. Configure TOTP nas configurações de segurança." };
     }
   } else {
-    // Se não há sessão Supabase ativa, só permite bypass se estiver explicitamente em DEMO não-produção
-    const isProduction = process.env.NODE_ENV === "production";
-    const demoModeAllowed = !isProduction && process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-    if (!demoModeAllowed || sanitizedCode !== "123456") {
-      return { success: false, error: "Sessão inválida ou código TOTP incorreto." };
-    }
+    // Sem sessão Supabase ativa — login necessário
+    return { success: false, error: "Sessão expirada. Faça login novamente." };
   }
 
   // Set verified AAL2 cookie

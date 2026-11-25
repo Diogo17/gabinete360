@@ -9,7 +9,6 @@ import {
   Input,
   Button,
   NoticeBanner,
-  DemoWatermark,
   Badge,
 } from "@gabinete360/ui";
 import { verifyMfa, adminSignOut } from "../../lib/auth/actions";
@@ -47,7 +46,6 @@ export default function MasterMfaPage() {
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center bg-paper p-4">
-      <DemoWatermark />
 
       <div className="w-full max-w-md space-y-6">
         {/* Header */}

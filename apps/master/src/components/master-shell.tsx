@@ -139,7 +139,7 @@ export function MasterShell({
       breadcrumbs={breadcrumbs || defaultBreadcrumbs}
       notificationCount={2}
       topbarActions={actions}
-      showDemoWatermark={process.env.NEXT_PUBLIC_DEMO_MODE === "true"}
+      showDemoWatermark={false}
       onLogoutClick={async () => {
         await adminSignOut();
       }}
@@ -155,7 +155,6 @@ export function MasterShell({
                 <span className="text-[11px] font-bold uppercase tracking-wider text-green">
                   Painel Master DM IA Studio
                 </span>
-                <DemoWatermark size="sm" />
               </div>
               <h1 className="mt-1 font-heading text-2xl md:text-3xl font-extrabold tracking-tight text-ink">
                 {title}

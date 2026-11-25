@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "../lib/tenant/context";
+import { createClient } from "../lib/supabase/client";
+import { createDemandAction } from "../lib/actions/demands";
 import { ClientShell } from "../components/client-shell";
 import {
   AppShell, // Retained for test compatibility (F22: Must render AppShell layout)
@@ -30,7 +32,6 @@ import {
   SkeletonLoader,
   EmptyState,
   ErrorState,
-  DemoWatermark,
 } from "@gabinete360/ui";
 import {
   Inbox,
@@ -46,22 +47,88 @@ import {
   RefreshCw,
   FolderOpen,
 } from "lucide-react";
-import {
-  DEMO_DEMANDS,
-  DEMO_AGENDA_EVENTS,
-  DEMO_TERRITORIAL_STATS,
-  generateNextProtocol,
-  type DemoDemand,
-} from "../lib/mock-data";
 import { demandSchema, validateForm } from "../lib/validation/schemas";
+
+interface DashboardDemand {
+  id: string;
+  protocol: string;
+  title: string;
+  status: string;
+  priority: string;
+  neighborhood: string;
+  preferred_channel: string;
+  assigned_name: string;
+}
+
+interface DashboardAgendaEvent {
+  id: string;
+  title: string;
+  starts_at: string;
+  location: string;
+  visibility: string;
+}
 
 export default function ClientDashboardPage() {
   const router = useRouter();
   const { organization, profile } = useOrganization();
   const [filter, setFilter] = useState("todas");
-  const [uiState, setUiState] = useState<"normal" | "loading" | "empty" | "error">("normal");
+  const [uiState, setUiState] = useState<"normal" | "loading" | "empty" | "error">("loading");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [demandsList, setDemandsList] = useState<DemoDemand[]>(DEMO_DEMANDS);
+  const [demandsList, setDemandsList] = useState<DashboardDemand[]>([]);
+  const [agendaEvents, setAgendaEvents] = useState<DashboardAgendaEvent[]>([]);
+
+  const loadDashboardData = useCallback(async () => {
+    if (!organization?.id) {
+      setUiState("empty");
+      return;
+    }
+
+    setUiState("loading");
+    try {
+      const supabase = createClient();
+      const [demandsRes, agendaRes] = await Promise.all([
+        supabase
+          .from("demands")
+          .select("id, protocol, title, status, priority, neighborhood, preferred_channel")
+          .eq("organization_id", organization.id)
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("agenda_events")
+          .select("id, title, starts_at, location, visibility")
+          .eq("organization_id", organization.id)
+          .gte("starts_at", new Date().toISOString())
+          .order("starts_at", { ascending: true })
+          .limit(3),
+      ]);
+
+      if (demandsRes.error) {
+        setUiState("error");
+        return;
+      }
+
+      const mappedDemands: DashboardDemand[] = (demandsRes.data || []).map((d: any) => ({
+        id: d.id,
+        protocol: d.protocol || `#AT-${d.id.slice(0, 4)}`,
+        title: d.title,
+        status: d.status || "received",
+        priority: d.priority || "normal",
+        neighborhood: d.neighborhood || "Não informado",
+        preferred_channel: d.preferred_channel || "presencial",
+        assigned_name: "Equipe",
+      }));
+
+      setDemandsList(mappedDemands);
+      setAgendaEvents((agendaRes.data || []) as DashboardAgendaEvent[]);
+      setUiState(mappedDemands.length === 0 ? "empty" : "normal");
+    } catch {
+      setUiState("error");
+    }
+  }, [organization?.id]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   // Form state for New Demand Modal
   const [formTitle, setFormTitle] = useState("");
@@ -72,7 +139,7 @@ export default function ClientDashboardPage() {
   const [formDescription, setFormDescription] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  const handleCreateDemand = (e: React.FormEvent) => {
+  const handleCreateDemand = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = validateForm(demandSchema, {
       title: formTitle,
@@ -89,44 +156,26 @@ export default function ClientDashboardPage() {
       return;
     }
 
-    const newDemand: DemoDemand = {
-      id: `dem-${Date.now()}`,
-      organization_id: organization?.id || "org-gabinete-mariana",
-      workspace_id: "wks-santos-01",
-      protocol: generateNextProtocol(),
-      citizen_name: formCitizenName || "Munícipe Geral",
-      preferred_channel: "whatsapp",
+    const actionRes = await createDemandAction({
       title: formTitle,
       description: formDescription,
-      category: formCategory,
-      priority: formPriority,
-      status: "received",
-      classification: "public",
-      neighborhood: formNeighborhood,
-      location_text: `${formNeighborhood}, Santos - SP`,
-      assigned_to: "usr-adv-ana",
-      assigned_name: "Ana Souza",
-      due_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      events: [
-        {
-          id: `evt-${Date.now()}`,
-          demand_id: `dem-${Date.now()}`,
-          event_type: "created",
-          actor_name: `${profile?.display_name || "Mariana Costa"} (Mandato)`,
-          note: "Atendimento cadastrado no painel operacional.",
-          created_at: new Date().toISOString(),
-        },
-      ],
-    };
+      citizen_name: formCitizenName || "Munícipe Geral",
+      citizen_neighborhood: formNeighborhood,
+      category_key: formCategory,
+      priority: formPriority === "normal" ? "medium" : formPriority,
+    });
 
-    setDemandsList([newDemand, ...demandsList]);
+    if (!actionRes.success) {
+      setFormErrors({ title: actionRes.error || "Erro ao salvar atendimento." });
+      return;
+    }
+
     setIsModalOpen(false);
     setFormTitle("");
     setFormDescription("");
     setFormCitizenName("");
     setFormErrors({});
+    await loadDashboardData();
   };
 
   const filteredDemands = demandsList.filter((d) => {
@@ -155,36 +204,6 @@ export default function ClientDashboardPage() {
       }
     >
       <div className="space-y-6">
-        {/* UI State Controls Switcher */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-paper border border-line rounded-lg p-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-ink">Estado da Tela:</span>
-            <div className="flex items-center gap-1">
-              {(["normal", "loading", "empty", "error"] as const).map((st) => (
-                <button
-                  key={st}
-                  type="button"
-                  onClick={() => setUiState(st)}
-                  className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
-                    uiState === st
-                      ? "bg-green text-white shadow-xs"
-                      : "bg-white text-muted hover:text-ink border border-line"
-                  }`}
-                >
-                  {st === "normal" && "Normal"}
-                  {st === "loading" && "Carregando"}
-                  {st === "empty" && "Vazio"}
-                  {st === "error" && "Erro"}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <DemoWatermark size="sm" />
-            <Badge variant="amber">AMBIENTE DEMONSTRAÇÃO</Badge>
-          </div>
-        </div>
-
         {/* Welcome Banner */}
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
@@ -412,18 +431,22 @@ export default function ClientDashboardPage() {
                     </button>
                   </CardHeader>
                   <CardContent className="space-y-2.5">
-                    {DEMO_AGENDA_EVENTS.slice(0, 3).map((evt, idx) => (
-                      <AgendaEventItem
-                        key={evt.id}
-                        time={new Date(evt.starts_at).toLocaleTimeString("pt-BR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                        title={evt.title}
-                        meta={`${evt.location} · ${evt.visibility === "public" ? "Pública" : "Gabinete"}`}
-                        variant={idx === 0 ? "green" : idx === 1 ? "amber" : "blue"}
-                      />
-                    ))}
+                    {agendaEvents.length === 0 ? (
+                      <p className="text-xs text-muted">Nenhum compromisso próximo agendado.</p>
+                    ) : (
+                      agendaEvents.map((evt, idx) => (
+                        <AgendaEventItem
+                          key={evt.id}
+                          time={new Date(evt.starts_at).toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                          title={evt.title}
+                          meta={`${evt.location || "Gabinete"} · ${evt.visibility === "public" ? "Pública" : "Gabinete"}`}
+                          variant={idx === 0 ? "green" : idx === 1 ? "amber" : "blue"}
+                        />
+                      ))
+                    )}
                   </CardContent>
                 </Card>
 
@@ -481,23 +504,9 @@ export default function ClientDashboardPage() {
                     <p className="text-xs text-muted">Demandas por bairro do município</p>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {DEMO_TERRITORIAL_STATS.map((stat) => (
-                      <div key={stat.neighborhood} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-medium text-ink">{stat.neighborhood}</span>
-                          <span className="font-bold text-muted">{stat.percentage}% ({stat.count})</span>
-                        </div>
-                        <div className="h-2 w-full bg-line rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{
-                              width: `${stat.percentage}%`,
-                              backgroundColor: stat.highlightColor,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                    <p className="text-xs text-muted">
+                      Os indicadores territoriais serão exibidos conforme os atendimentos forem registrados por bairro.
+                    </p>
                   </CardContent>
                 </Card>
               </div>

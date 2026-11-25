@@ -9,7 +9,6 @@ import {
   CardTitle,
   CardContent,
   Badge,
-  DemoWatermark,
   Table,
   Thead,
   Tbody,
@@ -37,8 +36,11 @@ import {
   LifeBuoy,
 } from "lucide-react";
 import { MasterShell } from "../components/master-shell";
+import { SuperuserPanelSelector } from "../components/superuser-panel-selector";
+import { useMasterAdmin } from "../lib/auth/context";
 
 export default function MasterDashboardPage() {
+  const { admin } = useMasterAdmin();
   const [filterType, setFilterType] = useState<"all" | "chamber" | "cabinet">("all");
 
   const clientsData = [
@@ -116,15 +118,17 @@ export default function MasterDashboardPage() {
       subtitle="Monitoramento multi-tenant de clientes, gabinetes ativos e integridade dos serviços"
       badgeText="Infraestrutura Operacional"
     >
+      <SuperuserPanelSelector
+        userEmail={admin?.email}
+        userName={admin?.display_name}
+      />
       {/* Notice Banner */}
       <NoticeBanner variant="institutional">
         <div className="flex items-center justify-between">
           <span>
             <strong>DM IA Studio · CONTROL PLANE:</strong> Este ambiente opera sob o Control Plane isolado (porta 3001).
-            Nenhum dado sensível de cidadãos do plano operacional é acessível a partir deste console. Todos os dados são de{" "}
-            <span className="font-bold underline">DEMONSTRAÇÃO</span>.
+            Nenhum dado sensível de cidadãos do plano operacional é acessível a partir deste console.
           </span>
-          <DemoWatermark size="sm" />
         </div>
       </NoticeBanner>
 
@@ -247,7 +251,6 @@ export default function MasterDashboardPage() {
                   Gabinetes
                 </button>
               </div>
-              <Badge variant="blue">Demonstração</Badge>
             </div>
           </CardHeader>
           <CardContent className="p-0">

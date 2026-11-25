@@ -180,16 +180,16 @@ export function ClientShell({
       brandTitle="Gabinete 360°"
       brandSubtitle="DM IA STUDIO"
       logoText="360°"
-      orgName={organization?.name || "Gabinete Mariana Costa"}
-      orgSubtitle={organization?.kind === "chamber" ? "Câmara Municipal" : "Câmara de Santos · SP"}
-      orgInitials={organization?.name?.substring(0, 2).toUpperCase() || "MC"}
-      userName={profile?.display_name || "Mariana Costa"}
-      userRole={profile?.role_title || "Vereadora · 2º Mandato"}
-      userInitials="MC"
+      orgName={organization?.name || "Gabinete"}
+      orgSubtitle={organization?.kind === "chamber" ? "Câmara Municipal" : organization?.municipality ? `${organization.municipality} · ${organization.state}` : "Mandato Parlamentar"}
+      orgInitials={organization?.name?.substring(0, 2).toUpperCase() || "G3"}
+      userName={profile?.display_name || "Usuário"}
+      userRole={profile?.role_title || "Membro da Equipe"}
+      userInitials={profile?.display_name?.substring(0, 2).toUpperCase() || "US"}
       navGroups={navGroups}
       breadcrumbs={defaultBreadcrumbs}
-      notificationCount={3}
-      showDemoWatermark={process.env.NEXT_PUBLIC_DEMO_MODE === "true"}
+      notificationCount={0}
+      showDemoWatermark={false}
       onLogoutClick={async () => {
         await signOut();
       }}

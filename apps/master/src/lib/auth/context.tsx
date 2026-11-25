@@ -2,48 +2,39 @@
 
 import React, { createContext, useContext, useState, useCallback } from "react";
 import type { PlatformAdmin } from "@gabinete360/types";
+import { adminSignOut } from "./actions";
 
 export interface MasterAdminContextValue {
   admin: PlatformAdmin | null;
   mfaVerified: boolean;
   isLoading: boolean;
+  setAdmin: (admin: PlatformAdmin | null) => void;
   setMfaVerified: (verified: boolean) => void;
   signOut: () => Promise<void>;
 }
-
-const DEFAULT_MASTER_ADMIN: PlatformAdmin = {
-  id: "adm-master-root",
-  auth_user_id: "usr-admin-root",
-  display_name: "Super Admin DM IA",
-  email: "admin@dmiastudio.com",
-  status: "active",
-  mfa_required: true,
-  mfa_enabled: true,
-  role: "platform_super_admin",
-  created_at: new Date("2026-01-01T00:00:00Z").toISOString(),
-  last_login_at: new Date().toISOString(),
-};
 
 const MasterAdminContext = createContext<MasterAdminContextValue | undefined>(undefined);
 
 export interface MasterAdminProviderProps {
   children: React.ReactNode;
-  initialAdmin?: PlatformAdmin;
+  initialAdmin?: PlatformAdmin | null;
   initialMfaVerified?: boolean;
 }
 
 export function MasterAdminProvider({
   children,
-  initialAdmin,
-  initialMfaVerified = true,
+  initialAdmin = null,
+  initialMfaVerified = false,
 }: MasterAdminProviderProps) {
-  const [admin] = useState<PlatformAdmin | null>(() => initialAdmin || DEFAULT_MASTER_ADMIN);
+  const [admin, setAdmin] = useState<PlatformAdmin | null>(initialAdmin);
   const [mfaVerified, setMfaVerified] = useState<boolean>(initialMfaVerified);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const signOut = useCallback(async () => {
     setIsLoading(true);
     try {
+      await adminSignOut();
+    } catch {
       window.location.href = "/login";
     } finally {
       setIsLoading(false);
@@ -54,6 +45,7 @@ export function MasterAdminProvider({
     admin,
     mfaVerified,
     isLoading,
+    setAdmin,
     setMfaVerified,
     signOut,
   };

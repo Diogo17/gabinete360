@@ -7,7 +7,6 @@ import {
   CardTitle,
   CardContent,
   Badge,
-  DemoWatermark,
   Table,
   Thead,
   Tbody,
@@ -17,6 +16,9 @@ import {
   Button,
   Modal,
   NoticeBanner,
+  Input,
+  Textarea,
+  Select,
 } from "@gabinete360/ui";
 import {
   Building2,
@@ -32,6 +34,7 @@ import {
   Filter,
 } from "lucide-react";
 import { MasterShell } from "../../components/master-shell";
+import { upsertConnectionConfig, addLegislativeItemFromMaster } from "../../lib/actions/connections";
 
 interface OrganizationTreeItem {
   id: string;

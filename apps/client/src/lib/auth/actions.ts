@@ -22,22 +22,6 @@ export async function signInWithPassword(
     return { success: false, error: "Informe seu e-mail e senha institucional." };
   }
 
-  // Em produção, rejeita credenciais simuladas
-  const isProduction = process.env.NODE_ENV === "production";
-  const demoModeAllowed = !isProduction && process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-
-  // Lista de credenciais de teste para demonstração e homologação
-  const DEMO_CREDENTIALS: Record<string, string> = {
-    "mariana.costa@santos.sp.leg.br": "Gabinete@2026",
-    "ana.souza@gabinete.mariana.br": "Admin@2026",
-    "rafael.lima@gabinete.mariana.br": "Assessor@2026",
-    "demo@gabinete360.com.br": "Demo@2026",
-  };
-
-  if (demoModeAllowed && DEMO_CREDENTIALS[email.toLowerCase()] && DEMO_CREDENTIALS[email.toLowerCase()] === password) {
-    redirect("/dashboard");
-  }
-
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -45,10 +29,6 @@ export async function signInWithPassword(
   });
 
   if (error) {
-    // Se a senha de demonstração foi usada em ambiente de homologação
-    if (demoModeAllowed && (password === "Gabinete@2026" || password === "Admin@2026" || password === "Assessor@2026")) {
-      redirect("/dashboard");
-    }
     return { success: false, error: error.message || "Credenciais inválidas." };
   }
 
