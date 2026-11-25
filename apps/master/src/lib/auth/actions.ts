@@ -104,7 +104,10 @@ export async function verifyMfa(code: string): Promise<MasterAuthResult> {
     if (listErr) {
       return { success: false, error: "Erro ao consultar fatores MFA do usuário." };
     }
-    const totpFactor = factors?.totp?.find((f) => f.status === "verified") || factors?.totp?.[0];
+    const totpFactor =
+      factors?.totp?.find((f) => f.status === "verified") ||
+      factors?.totp?.[0] ||
+      factors?.all?.find((f) => f.factor_type === "totp");
 
     if (totpFactor) {
       const challenge = await supabase.auth.mfa.challenge({
