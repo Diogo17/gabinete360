@@ -170,7 +170,7 @@ export default function DemandasPage() {
 
       const protocolCode = saveResult.data?.id
         ? `DEM-${saveResult.data.id.slice(0, 8).toUpperCase()}`
-        : generateNextProtocol();
+        : `DEM-${Date.now().toString().slice(-6)}`;
 
       const newDemand: DemoDemand = {
         id: saveResult.data?.id || `dem-${Date.now()}`,
