@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ClientShell } from "../../components/client-shell";
+import { useOrganization } from "../../lib/tenant/context";
+import { createClient } from "../../lib/supabase/client";
 import {
   Card,
   CardHeader,
@@ -31,10 +33,40 @@ import {
   Trash2,
   Camera,
 } from "lucide-react";
-import { DEMO_TEAM_MEMBERS, type DemoTeamMember } from "../../lib/mock-data";
+import { type DemoTeamMember } from "../../lib/mock-data";
 
 export default function EquipePage() {
-  const [members, setMembers] = useState<DemoTeamMember[]>(DEMO_TEAM_MEMBERS);
+  const { organization } = useOrganization();
+  const [members, setMembers] = useState<DemoTeamMember[]>([]);
+
+  useEffect(() => {
+    if (!organization?.id) return;
+    const supabase = createClient();
+    supabase
+      .from("memberships")
+      .select("*, profile:profiles(*)")
+      .eq("organization_id", organization.id)
+      .eq("status", "active")
+      .then(({ data }) => {
+        if (data) {
+          const mapped: DemoTeamMember[] = data.map((m: any) => ({
+            id: m.id,
+            organization_id: m.organization_id,
+            name: m.profile?.display_name || "Membro",
+            role: m.role,
+            role_title: m.profile?.role_title || m.role,
+            email: m.profile?.email || "",
+            phone: m.profile?.phone || "",
+            avatar_initials: (m.profile?.display_name || "MB").substring(0, 2).toUpperCase(),
+            status: m.status,
+            active_demands: 0,
+            active_tasks: 0,
+            joined_at: m.joined_at || m.created_at,
+          }));
+          setMembers(mapped);
+        }
+      });
+  }, [organization?.id]);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<DemoTeamMember | null>(null);
   const [editName, setEditName] = useState("");

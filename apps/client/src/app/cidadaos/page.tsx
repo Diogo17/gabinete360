@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ClientShell } from "../../components/client-shell";
+import { useOrganization } from "../../lib/tenant/context";
+import { createClient } from "../../lib/supabase/client";
 import {
   Card,
   CardHeader,
@@ -38,11 +40,25 @@ import {
   UserCheck,
   Building,
 } from "lucide-react";
-import { DEMO_CITIZENS, type DemoCitizen } from "../../lib/mock-data";
+import { type DemoCitizen } from "../../lib/mock-data";
 import { citizenSchema, validateForm } from "../../lib/validation/schemas";
 
 export default function CidadaosPage() {
-  const [citizens, setCitizens] = useState<DemoCitizen[]>(DEMO_CITIZENS);
+  const { organization } = useOrganization();
+  const [citizens, setCitizens] = useState<DemoCitizen[]>([]);
+
+  useEffect(() => {
+    if (!organization?.id) return;
+    const supabase = createClient();
+    supabase
+      .from("citizens")
+      .select("*")
+      .eq("organization_id", organization.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        if (data) setCitizens(data as DemoCitizen[]);
+      });
+  }, [organization?.id]);
   const [search, setSearch] = useState("");
   const [tagFilter, setTagFilter] = useState("all");
   const [uiState, setUiState] = useState<"normal" | "loading" | "empty" | "error">("normal");
