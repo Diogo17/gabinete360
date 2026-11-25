@@ -40,3 +40,5 @@ coverage/
 
 # Agents and teamwork metadata
 .agents/
+
+.sprite

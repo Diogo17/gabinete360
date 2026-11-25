@@ -1,44 +1,52 @@
 {
-  "timestamp": "2026-11-23T05:12:46.868Z",
-  "durationMs": 109,
-  "totalTests": 102,
-  "passed": 102,
-  "failed": 0,
+  "timestamp": "2026-11-25T19:19:51.346Z",
+  "durationMs": 80,
+  "totalTests": 51,
+  "passed": 50,
+  "failed": 1,
   "skipped": 0,
-  "totalAssertions": 620,
+  "totalAssertions": 316,
   "tiers": {
     "tier1": {
       "tier": 1,
       "total": 51,
-      "passed": 51,
-      "failed": 0,
+      "passed": 50,
+      "failed": 1,
       "skipped": 0,
       "assertionsCount": 316
     },
     "tier2": {
       "tier": 2,
-      "total": 42,
-      "passed": 42,
+      "total": 0,
+      "passed": 0,
       "failed": 0,
       "skipped": 0,
-      "assertionsCount": 192
+      "assertionsCount": 0
     },
     "tier3": {
       "tier": 3,
-      "total": 4,
-      "passed": 4,
+      "total": 0,
+      "passed": 0,
       "failed": 0,
       "skipped": 0,
-      "assertionsCount": 47
+      "assertionsCount": 0
     },
     "tier4": {
       "tier": 4,
-      "total": 5,
-      "passed": 5,
+      "total": 0,
+      "passed": 0,
       "failed": 0,
       "skipped": 0,
-      "assertionsCount": 65
+      "assertionsCount": 0
     }
   },
-  "failures": []
+  "failures": [
+    {
+      "suiteName": "Tier 1: Master Control Plane Modules (F13 to F21)",
+      "testName": "F13: Master executive dashboard and infrastructure metrics",
+      "tier": 1,
+      "error": "Must include DemoWatermark component",
+      "stack": "AssertionError: Must include DemoWatermark component\n    at assertFileContains (file:///C:/Users/Diogo%20Mota/Desktop/GABINETE%20360/tests/e2e/harness/assertions.ts:66:11)\n    at Object.fn (file:///C:/Users/Diogo%20Mota/Desktop/GABINETE%20360/tests/e2e/tier1-features/05-master-portal.test.ts:19:5)\n    at run (file:///C:/Users/Diogo%20Mota/Desktop/GABINETE%20360/tests/e2e/harness/runner.ts:187:17)"
+    }
+  ]
 }
