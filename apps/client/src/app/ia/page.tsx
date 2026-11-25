@@ -36,19 +36,47 @@ export default function IAPage() {
     suggestedAction: "Elaborar Requerimento de Urgência à CPFL / Secretaria de Serviços Públicos.",
   });
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
+    if (!demandText.trim()) return;
     setIsAnalyzing(true);
-    setTimeout(() => {
-      setIsAnalyzing(false);
-      setAnalysisResult({
-        category: "Iluminação Pública / Segurança",
-        urgency: "Alta",
-        summary: "Solicitação de reparo de iluminação urgente devido a relatos de insegurança no Jardim das Flores.",
-        suggestedResponse:
-          "Olá! Informamos que o gabinete registrou sua solicitação sob o protocolo #AT-0250. Nosso setor de infraestrutura já foi acionado para cobrar a concessionária responsável.",
-        suggestedAction: "Encaminhamento direto à concessionária de energia e ao batalhão comunitário.",
+    try {
+      const res = await fetch("/api/ia/assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "triage",
+          content: demandText,
+        }),
       });
-    }, 800);
+      const data = await res.json();
+      if (res.ok && data.result) {
+        setAnalysisResult({
+          category: "Classificação Assistiva (Gemini)",
+          urgency: "Analisado em tempo real",
+          summary: data.result,
+          suggestedResponse: data.result,
+          suggestedAction: "Revisar e encaminhar ao assessor responsável.",
+        });
+      } else {
+        setAnalysisResult({
+          category: "Erro na análise",
+          urgency: "Indisponível",
+          summary: data.error || "Não foi possível conectar à API Gemini.",
+          suggestedResponse: "",
+          suggestedAction: "Verifique a variável GEMINI_API_KEY.",
+        });
+      }
+    } catch {
+      setAnalysisResult({
+        category: "Erro de rede",
+        urgency: "Indisponível",
+        summary: "Falha ao chamar o endpoint /api/ia/assist.",
+        suggestedResponse: "",
+        suggestedAction: "Tente novamente.",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   return (
