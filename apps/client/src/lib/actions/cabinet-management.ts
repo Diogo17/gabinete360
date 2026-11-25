@@ -105,3 +105,64 @@ export async function removeTeamMember(organizationId: string, membershipId: str
   revalidatePath("/equipe");
   return { success: true };
 }
+
+/**
+ * CRUD de Agenda (agenda_events)
+ */
+export async function deleteAgendaEvent(organizationId: string, eventId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("agenda_events")
+    .delete()
+    .eq("id", eventId)
+    .eq("organization_id", organizationId);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/agenda");
+  return { success: true };
+}
+
+/**
+ * CRUD de Tarefas (tasks)
+ */
+export async function toggleTaskStatus(organizationId: string, taskId: string, status: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ status })
+    .eq("id", taskId)
+    .eq("organization_id", organizationId);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/tarefas");
+  return { success: true };
+}
+
+export async function deleteTask(organizationId: string, taskId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .delete()
+    .eq("id", taskId)
+    .eq("organization_id", organizationId);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/tarefas");
+  return { success: true };
+}
+
+/**
+ * CRUD de Cidadãos (citizens)
+ */
+export async function deleteCitizen(organizationId: string, citizenId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("citizens")
+    .delete()
+    .eq("id", citizenId)
+    .eq("organization_id", organizationId);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/cidadaos");
+  return { success: true };
+}
