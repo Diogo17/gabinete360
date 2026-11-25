@@ -32,14 +32,33 @@ import {
 
 export default function PortalPublicoPage() {
   const [formSent, setFormSent] = useState(false);
+  const [protocol, setProtocol] = useState<string | null>(null);
   const [citizenName, setCitizenName] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!citizenName || !message) return;
-    setFormSent(true);
+    try {
+      const res = await fetch("/api/public/intake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          citizen_name: citizenName,
+          neighborhood,
+          title: message.slice(0, 80),
+          description: message,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setProtocol(data.protocol);
+        setFormSent(true);
+      }
+    } catch {
+      // ignore
+    }
   };
 
   return (

@@ -76,6 +76,28 @@ export default function ClientDashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [demandsList, setDemandsList] = useState<DashboardDemand[]>([]);
   const [agendaEvents, setAgendaEvents] = useState<DashboardAgendaEvent[]>([]);
+  const [dailySummary, setDailySummary] = useState<string | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+
+  const handleGenerateSummary = async () => {
+    setLoadingSummary(true);
+    try {
+      const res = await fetch("/api/ia/assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "daily_summary",
+          content: `Demandas abertas: ${demandsList.length}. Compromissos próximos: ${agendaEvents.length}.`,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.result) {
+        setDailySummary(data.result);
+      }
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
 
   const loadDashboardData = useCallback(async () => {
     if (!organization?.id) {
