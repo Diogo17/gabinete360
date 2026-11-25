@@ -11,13 +11,31 @@ import {
   NoticeBanner,
   Badge,
 } from "@gabinete360/ui";
-import { verifyMfa, adminSignOut } from "../../lib/auth/actions";
+import { verifyMfa, adminSignOut, enrollMasterMfa } from "../../lib/auth/actions";
 import { ShieldCheck, Smartphone, CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
 
 export default function MasterMfaPage() {
   const [totpCode, setTotpCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [totpSecret, setTotpSecret] = useState<string | null>(null);
+
+  const handleEnroll = async () => {
+    setIsLoading(true);
+    setErrorMsg(null);
+    try {
+      const res = await enrollMasterMfa();
+      if (res.success && res.qrCode) {
+        setQrCodeUrl(res.qrCode);
+        setTotpSecret(res.secret || null);
+      } else {
+        setErrorMsg(res.error || "Erro ao gerar QR Code MFA.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +111,33 @@ export default function MasterMfaPage() {
               >
                 {errorMsg}
               </NoticeBanner>
+            )}
+
+            {qrCodeUrl && (
+              <div className="p-4 rounded-xl border border-line bg-white text-center space-y-2">
+                <p className="text-xs font-bold text-ink">
+                  Escaneie o QR Code no seu aplicativo autenticador:
+                </p>
+                <img src={qrCodeUrl} alt="QR Code MFA" className="mx-auto w-40 h-40" />
+                {totpSecret && (
+                  <p className="text-[10px] text-muted font-mono break-all">
+                    Chave manual: {totpSecret}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {!qrCodeUrl && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleEnroll}
+                disabled={isLoading}
+                className="w-full text-xs"
+              >
+                Configurar Autenticador (QR Code)
+              </Button>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">

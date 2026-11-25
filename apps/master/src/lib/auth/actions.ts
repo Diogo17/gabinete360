@@ -7,8 +7,42 @@ import { createClient } from "../supabase/server";
 export interface MasterAuthResult {
   success: boolean;
   requiresMfa?: boolean;
+  needsEnrollment?: boolean;
   error?: string | null;
   message?: string;
+}
+
+/**
+ * Enroll a new TOTP MFA factor for the authenticated Master Admin.
+ */
+export async function enrollMasterMfa(): Promise<{
+  success: boolean;
+  qrCode?: string;
+  secret?: string;
+  factorId?: string;
+  error?: string;
+}> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: "Sessão expirada. Faça login novamente." };
+  }
+
+  const { data, error } = await supabase.auth.mfa.enroll({
+    factorType: "totp",
+    friendlyName: "Gabinete 360 Master",
+  });
+
+  if (error || !data) {
+    return { success: false, error: error?.message || "Erro ao iniciar configuração MFA." };
+  }
+
+  return {
+    success: true,
+    qrCode: data.totp.qr_code,
+    secret: data.totp.secret,
+    factorId: data.id,
+  };
 }
 
 /**
@@ -91,8 +125,12 @@ export async function verifyMfa(code: string): Promise<MasterAuthResult> {
         return { success: false, error: "Código TOTP inválido ou expirado." };
       }
     } else {
-      // Usuário autenticado sem fator TOTP cadastrado — MFA obrigatório para todos os admins
-      return { success: false, error: "MFA obrigatório não configurado para este administrador. Configure TOTP nas configurações de segurança." };
+      // Usuário autenticado sem fator TOTP cadastrado — precisa configurar QR Code
+      return {
+        success: false,
+        needsEnrollment: true,
+        error: "MFA ainda não configurado. Clique em 'Configurar Autenticador (QR Code)' abaixo para vincular seu aplicativo.",
+      };
     }
   } else {
     // Sem sessão Supabase ativa — login necessário
