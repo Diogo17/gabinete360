@@ -51,7 +51,10 @@ async function whatsappFetch<T = unknown>(
 export const whatsappClient = {
   createInstance(instanceName: string, webhookUrl?: string, node?: WhatsAppNodeConfig) {
     return whatsappFetch<{
-      instance: { instanceName: string; token: string; status: string };
+      id?: number;
+      name?: string;
+      Auth?: { id: number; token: string };
+      instance?: { instanceName: string; token: string; status: string };
       qrcode?: { base64?: string; code?: string };
     }>("/instance/create", {
       method: "POST",

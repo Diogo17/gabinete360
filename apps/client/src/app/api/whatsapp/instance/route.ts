@@ -48,7 +48,14 @@ export async function POST(req: NextRequest) {
     }
 
     const created = await whatsappClient.createInstance(instanceName, webhookUrl, selectedNode);
-    const token = created.instance.token;
+    const token = created.Auth?.token ?? created.instance?.token;
+
+    if (!token) {
+      return NextResponse.json(
+        { error: "Token da instância não retornado pela API do WhatsApp." },
+        { status: 502 }
+      );
+    }
 
     const connectData = await whatsappClient.connectInstance(
       instanceName,
