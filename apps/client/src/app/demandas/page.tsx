@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ClientShell } from "../../components/client-shell";
 import {
   Card,
@@ -40,20 +40,36 @@ import {
   RefreshCw,
   FileText,
 } from "lucide-react";
-import {
-  DEMO_DEMANDS,
-  generateNextProtocol,
-  type DemoDemand,
-} from "../../lib/mock-data";
+import { type DemoDemand } from "../../lib/mock-data";
 import { demandSchema, validateForm } from "../../lib/validation/schemas";
 import { createDemandAction, getDemandsAction } from "../../lib/actions/demands";
 
 export default function DemandasPage() {
-  const [demands, setDemands] = useState<DemoDemand[]>(DEMO_DEMANDS);
+  const [demands, setDemands] = useState<DemoDemand[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [uiState, setUiState] = useState<"normal" | "loading" | "empty" | "error">("normal");
+  const [uiState, setUiState] = useState<"normal" | "loading" | "empty" | "error">("loading");
+
+  const loadDemands = useCallback(async () => {
+    setUiState("loading");
+    try {
+      const res = await getDemandsAction();
+      if (!res.success) {
+        setUiState("error");
+        return;
+      }
+      const rows = (res.data || []) as DemoDemand[];
+      setDemands(rows);
+      setUiState(rows.length === 0 ? "empty" : "normal");
+    } catch {
+      setUiState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDemands();
+  }, [loadDemands]);
   const [selectedDemand, setSelectedDemand] = useState<DemoDemand | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
