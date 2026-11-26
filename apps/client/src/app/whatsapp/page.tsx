@@ -38,7 +38,21 @@ export default function WhatsAppPage() {
 
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
-      const gabId = (user?.user_metadata?.gabinete_id as string | undefined) || user?.id || null;
+      if (!user) return;
+
+      let gabId = (user.user_metadata?.gabinete_id as string | undefined) || null;
+      if (!gabId) {
+        const { data: membership } = await supabase
+          .from("memberships")
+          .select("organization_id")
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        gabId = membership?.organization_id ?? null;
+      }
+
       setGabineteId(gabId);
       if (!gabId) return;
 
