@@ -37,31 +37,6 @@ interface InspectionCase {
   actions_taken: string;
 }
 
-const INITIAL_INSPECTIONS: InspectionCase[] = [
-  {
-    id: "fisc-01",
-    code: "FISC-2026-001",
-    title: "Fiscalização da Reforma da UPA Zona Leste",
-    entity: "Secretaria de Saúde / Empreiteira Viva Mais",
-    neighborhood: "Ponta da Praia",
-    date: "12/11/2026",
-    status: "forwarded",
-    findings: "Atraso de 4 meses na entrega das salas de triagem; falta de climatização na espera provisória.",
-    actions_taken: "Encaminhado Requerimento de Informações nº 312/2026 e relatório técnico ao Ministério Público.",
-  },
-  {
-    id: "fisc-02",
-    code: "FISC-2026-002",
-    title: "Vistoria no Centro Educacional Comunitário",
-    entity: "Secretaria Municipal de Educação",
-    neighborhood: "Jardim das Flores",
-    date: "18/11/2026",
-    status: "active",
-    findings: "Infiltração grave no refeitório das crianças e parquinho interditado pela Defesa Civil.",
-    actions_taken: "Agendada reunião emergencial com a Secretaria de Infraestrutura Escolar.",
-  },
-];
-
 export default function FiscalizacaoPage() {
   const [cases, setCases] = useState<InspectionCase[]>([]);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -69,7 +44,7 @@ export default function FiscalizacaoPage() {
   // Form
   const [title, setTitle] = useState("");
   const [entity, setEntity] = useState("");
-  const [neighborhood, setNeighborhood] = useState("Jardim das Flores");
+  const [neighborhood, setNeighborhood] = useState("");
   const [findings, setFindings] = useState("");
 
   const handleCreateCase = (e: React.FormEvent) => {
@@ -190,7 +165,7 @@ export default function FiscalizacaoPage() {
               <Input
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
-                placeholder="Ex.: Bairro do Macuco"
+                placeholder="Ex.: Centro ou Comunidade Rural"
               />
             </div>
           </div>

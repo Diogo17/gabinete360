@@ -47,15 +47,16 @@ ON CONFLICT (user_id) DO UPDATE SET
   display_name = EXCLUDED.display_name;
 
 -- 5. Vincular Membership (Titular do Gabinete)
-INSERT INTO public.memberships (organization_id, user_id, status, joined_at, created_at)
+INSERT INTO public.memberships (organization_id, user_id, role, status, joined_at, created_at)
 VALUES (
   '11111111-1111-4111-8111-111111110001',
   'e48c69ce-c99d-40f0-875f-13735a5fc235',
+  'parliamentarian',
   'active',
   now(),
   now()
 )
-ON CONFLICT DO NOTHING;
+ON CONFLICT (organization_id, user_id) DO UPDATE SET role = 'parliamentarian';
 
 -- 5b. Criar Organização da Câmara Municipal de Januária - MG e vincular o Vereador
 INSERT INTO public.organizations (id, platform_tenant_id, name, slug, kind, status, created_at)

@@ -34,36 +34,6 @@ interface CommunityProposal {
   description: string;
 }
 
-const INITIAL_PROPOSALS: CommunityProposal[] = [
-  {
-    id: "prop-01",
-    title: "Criação de Parque Pet Municipal na Orla da Praia",
-    author: "Camila Guimarães",
-    neighborhood: "Gonzaga",
-    votes: 342,
-    status: "converted_to_pl",
-    description: "Espaço cercado com bebedouros e obstáculos de agility para socialização canina sem risco aos banhistas.",
-  },
-  {
-    id: "prop-02",
-    title: "Ciclovia conectando a Zona Noroeste ao Centro Histórico",
-    author: "Felipe Andrade",
-    neighborhood: "Areia Branca",
-    votes: 189,
-    status: "under_review",
-    description: "Interligação segura para os trabalhadores que utilizam bicicleta diariamente para acessar o centro.",
-  },
-  {
-    id: "prop-03",
-    title: "Horta Comunitária Urbana nos Terrenos Baldios do Município",
-    author: "Tereza Cristina",
-    neighborhood: "Marapé",
-    votes: 95,
-    status: "open",
-    description: "Incentivo à agricultura urbana e hortaliças orgânicas para famílias em vulnerabilidade social.",
-  },
-];
-
 export default function ParticipacaoPage() {
   const [proposals, setProposals] = useState<CommunityProposal[]>([]);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -71,7 +41,7 @@ export default function ParticipacaoPage() {
   // Form
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
-  const [neighborhood, setNeighborhood] = useState("Gonzaga");
+  const [neighborhood, setNeighborhood] = useState("");
   const [description, setDescription] = useState("");
 
   const handleVote = (id: string) => {
@@ -172,7 +142,7 @@ export default function ParticipacaoPage() {
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex.: Instalação de lixeiras seletivas nas praias"
+              placeholder="Ex.: Melhoria da iluminação pública e áreas de lazer"
             />
           </div>
 
@@ -182,15 +152,15 @@ export default function ParticipacaoPage() {
               <Input
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
-                placeholder="Ex.: Mariana Souza"
+                placeholder="Ex.: Liderança Comunitária"
               />
             </div>
             <div>
-              <label className="font-semibold block mb-1">Bairro *</label>
+              <label className="font-semibold block mb-1">Bairro / Comunidade *</label>
               <Input
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
-                placeholder="Ex.: Ponta da Praia"
+                placeholder="Ex.: Centro ou Comunidade Rural"
               />
             </div>
           </div>

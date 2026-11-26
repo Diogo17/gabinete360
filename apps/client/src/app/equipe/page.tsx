@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ClientShell } from "../../components/client-shell";
 import { useOrganization } from "../../lib/tenant/context";
 import { createClient } from "../../lib/supabase/client";
+import { updateClientUserProfile } from "../../lib/actions/profile";
+import { updateTeamMemberRole, removeTeamMember } from "../../lib/actions/cabinet-management";
 import {
   Card,
   CardHeader,
   CardTitle,
-  CardContent,
   Badge,
   Button,
   Table,
@@ -22,65 +23,75 @@ import {
   Input,
   Select,
 } from "@gabinete360/ui";
-import {
-  UserCheck,
-  Plus,
-  Shield,
-  Mail,
-  Phone,
-  CheckCircle,
-  Edit2,
-  Trash2,
-  Camera,
-} from "lucide-react";
+import { UserCheck, Plus, Mail, Edit2, Trash2 } from "lucide-react";
 import { type DemoTeamMember } from "../../lib/types/domain";
 
-export default function EquipePage() {
-  const { organization } = useOrganization();
-  const [members, setMembers] = useState<DemoTeamMember[]>([]);
+interface TeamRow extends DemoTeamMember {
+  user_id?: string;
+}
 
-  useEffect(() => {
-    if (!organization?.id) return;
-    const supabase = createClient();
-    supabase
-      .from("memberships")
-      .select("*, profile:profiles(*)")
-      .eq("organization_id", organization.id)
-      .eq("status", "active")
-      .then(({ data }) => {
-        if (data) {
-          const mapped: DemoTeamMember[] = data.map((m: any) => ({
-            id: m.id,
-            organization_id: m.organization_id,
-            name: m.profile?.display_name || "Membro",
-            role: m.role,
-            role_title: m.profile?.role_title || m.role,
-            email: m.profile?.email || "",
-            phone: m.profile?.phone || "",
-            avatar_initials: (m.profile?.display_name || "MB").substring(0, 2).toUpperCase(),
-            status: m.status,
-            active_demands: 0,
-            active_tasks: 0,
-            joined_at: m.joined_at || m.created_at,
-          }));
-          setMembers(mapped);
-        }
-      });
-  }, [organization?.id]);
+export default function EquipePage() {
+  const { organization, membership: currentMembership, refreshMembership } = useOrganization();
+  const [members, setMembers] = useState<TeamRow[]>([]);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<DemoTeamMember | null>(null);
+  const [editingMember, setEditingMember] = useState<TeamRow | null>(null);
   const [editName, setEditName] = useState("");
   const [editRoleTitle, setEditRoleTitle] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editRole, setEditRole] = useState("advisor");
+  const [savingEdit, setSavingEdit] = useState(false);
 
-  // Form State
+  // Invite Form State
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [roleTitle, setRoleTitle] = useState("Assessor Parlamentar");
   const [role, setRole] = useState("advisor");
 
-  const handleEditOpen = (m: DemoTeamMember) => {
+  const loadMembers = useCallback(async () => {
+    if (!organization?.id) return;
+    const supabase = createClient();
+    const { data: memberships } = await supabase
+      .from("memberships")
+      .select("*")
+      .eq("organization_id", organization.id)
+      .eq("status", "active");
+
+    if (!memberships) return;
+
+    const userIds = memberships.map((m: any) => m.user_id).filter(Boolean);
+    const { data: profiles } = userIds.length
+      ? await supabase.from("profiles").select("*").in("user_id", userIds)
+      : { data: [] };
+
+    const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+
+    const mapped: TeamRow[] = memberships.map((m: any) => {
+      const p: any = profileMap.get(m.user_id);
+      const displayName = p?.display_name || "Membro do Gabinete";
+      return {
+        id: m.id,
+        user_id: m.user_id,
+        organization_id: m.organization_id,
+        name: displayName,
+        role: m.role,
+        role_title: p?.institutional_role || p?.role_title || m.role,
+        email: "",
+        phone: p?.phone || "",
+        avatar_initials: displayName.substring(0, 2).toUpperCase(),
+        status: m.status,
+        active_demands: 0,
+        active_tasks: 0,
+        joined_at: m.joined_at || m.created_at,
+      };
+    });
+    setMembers(mapped);
+  }, [organization?.id]);
+
+  useEffect(() => {
+    loadMembers();
+  }, [loadMembers]);
+
+  const handleEditOpen = (m: TeamRow) => {
     setEditingMember(m);
     setEditName(m.name);
     setEditRoleTitle(m.role_title);
@@ -88,28 +99,38 @@ export default function EquipePage() {
     setEditRole(m.role as string);
   };
 
-  const handleEditSave = (e: React.FormEvent) => {
+  const handleEditSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingMember) return;
-    setMembers(
-      members.map((m) =>
-        m.id === editingMember.id
-          ? {
-              ...m,
-              name: editName,
-              role_title: editRoleTitle,
-              phone: editPhone,
-              role: editRole as any,
-            }
-          : m
-      )
-    );
-    setEditingMember(null);
+    if (!editingMember || !organization?.id) return;
+    setSavingEdit(true);
+
+    try {
+      if (editingMember.user_id && editingMember.user_id === currentMembership?.user_id) {
+        await updateClientUserProfile({
+          displayName: editName,
+          roleTitle: editRoleTitle,
+          phone: editPhone,
+        });
+      }
+
+      if (
+        ["parliamentarian", "chief_of_staff", "staff", "advisor", "intern"].includes(editRole)
+      ) {
+        await updateTeamMemberRole(organization.id, editingMember.id, editRole as any);
+      }
+
+      await Promise.all([loadMembers(), refreshMembership()]);
+      setEditingMember(null);
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
-  const handleDeleteMember = (id: string, memberName: string) => {
+  const handleDeleteMember = async (id: string, memberName: string) => {
+    if (!organization?.id) return;
     if (confirm(`Tem certeza que deseja remover ${memberName} da equipe do gabinete?`)) {
-      setMembers(members.filter((m) => m.id !== id));
+      await removeTeamMember(organization.id, id);
+      await loadMembers();
     }
   };
 
@@ -117,18 +138,23 @@ export default function EquipePage() {
     e.preventDefault();
     if (!name || !email) return;
 
-    const newMember: DemoTeamMember = {
+    const newMember: TeamRow = {
       id: `mem-${Date.now()}`,
-      organization_id: "org-gabinete-mariana",
+      organization_id: organization?.id || "",
       name,
       email,
-      phone: "+55 13 99999-0000",
+      phone: "",
       role: role as any,
       role_title: roleTitle,
       status: "invited",
       active_demands: 0,
       active_tasks: 0,
-      avatar_initials: name.split(" ").map((n) => n[0]).join(""),
+      avatar_initials: name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase(),
       joined_at: new Date().toISOString(),
     };
 
@@ -138,16 +164,19 @@ export default function EquipePage() {
     setEmail("");
   };
 
-  const getRoleBadge = (role: DemoTeamMember["role"]) => {
-    switch (role) {
+  const getRoleBadge = (memberRole: string) => {
+    switch (memberRole) {
+      case "parliamentarian":
       case "owner":
         return <Badge variant="green">Titular / Parlamentar</Badge>;
+      case "chief_of_staff":
       case "admin":
-        return <Badge variant="blue">Chefe de Gabinete / Admin</Badge>;
+        return <Badge variant="blue">Chefe de Gabinete</Badge>;
       case "advisor":
-        return <Badge variant="neutral">Assessor / Atendimento</Badge>;
+      case "staff":
+        return <Badge variant="neutral">Assessor / Equipe</Badge>;
       default:
-        return <Badge variant="neutral">{role}</Badge>;
+        return <Badge variant="neutral">{memberRole}</Badge>;
     }
   };
 
@@ -168,10 +197,10 @@ export default function EquipePage() {
           <div className="flex items-center gap-2">
             <UserCheck className="h-4 w-4" />
             <span>
-              <strong>Equipe e Controle de Acessos RBAC</strong> — Gerenciamento de servidores, assessores parlamentares e atribuição de permissões operacionais.
+              <strong>Equipe e Controle de Acessos RBAC</strong> — Gerenciamento de servidores,
+              assessores parlamentares e atribuição de permissões operacionais.
             </span>
           </div>
-
         </div>
 
         <Card>
@@ -200,9 +229,11 @@ export default function EquipePage() {
                         <Avatar name={m.name} size="sm" />
                         <div>
                           <div className="font-semibold text-ink text-sm">{m.name}</div>
-                          <div className="text-[11px] text-muted flex items-center gap-1 font-mono">
-                            <Mail className="h-3 w-3 text-muted" /> {m.email}
-                          </div>
+                          {(m.email || m.phone) && (
+                            <div className="text-[11px] text-muted flex items-center gap-1 font-mono">
+                              <Mail className="h-3 w-3 text-muted" /> {m.email || m.phone}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </Td>
@@ -231,7 +262,7 @@ export default function EquipePage() {
                         >
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
-                        {m.role !== "owner" && (
+                        {m.role !== "owner" && m.role !== ("parliamentarian" as any) && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -273,7 +304,7 @@ export default function EquipePage() {
             <Input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="lucas@gabinete.exemplo.com.br"
+              placeholder="assessor@gabinete360.app"
             />
           </div>
 
@@ -293,7 +324,7 @@ export default function EquipePage() {
                 onChange={(e) => setRole(e.target.value)}
                 options={[
                   { value: "advisor", label: "Assessor (Atendimentos e Agenda)" },
-                  { value: "admin", label: "Chefe de Gabinete (Acesso Total)" },
+                  { value: "chief_of_staff", label: "Chefe de Gabinete (Acesso Total)" },
                 ]}
               />
             </div>
@@ -327,15 +358,6 @@ export default function EquipePage() {
               />
             </div>
 
-            <div>
-              <label className="font-semibold block mb-1">E-mail Corporativo</label>
-              <Input
-                value={editingMember.email}
-                disabled
-                className="bg-muted-bg cursor-not-allowed opacity-75 font-mono"
-              />
-            </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="font-semibold block mb-1">Cargo no Mandato *</label>
@@ -350,7 +372,7 @@ export default function EquipePage() {
                 <Input
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
-                  placeholder="+55 13 99999-0000"
+                  placeholder="(38) 99999-0000"
                 />
               </div>
             </div>
@@ -362,8 +384,9 @@ export default function EquipePage() {
                 onChange={(e) => setEditRole(e.target.value)}
                 options={[
                   { value: "advisor", label: "Assessor (Atendimentos e Agenda)" },
-                  { value: "admin", label: "Chefe de Gabinete (Acesso Total)" },
-                  { value: "owner", label: "Titular do Mandato (Parlamentar)" },
+                  { value: "staff", label: "Equipe / Atendimento" },
+                  { value: "chief_of_staff", label: "Chefe de Gabinete" },
+                  { value: "parliamentarian", label: "Titular do Mandato (Parlamentar)" },
                 ]}
               />
             </div>
@@ -372,8 +395,8 @@ export default function EquipePage() {
               <Button variant="ghost" type="button" onClick={() => setEditingMember(null)}>
                 Cancelar
               </Button>
-              <Button variant="primary" type="submit">
-                Salvar Alterações
+              <Button variant="primary" type="submit" disabled={savingEdit}>
+                {savingEdit ? "Salvando..." : "Salvar Alterações"}
               </Button>
             </div>
           </form>

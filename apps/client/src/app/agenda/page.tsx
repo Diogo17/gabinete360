@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ClientShell } from "../../components/client-shell";
 import { useOrganization } from "../../lib/tenant/context";
 import { createClient } from "../../lib/supabase/client";
+import { createAgendaEventAction } from "../../lib/actions/cabinet-management";
 import {
   Card,
   CardHeader,
@@ -31,65 +32,88 @@ import {
 import { type DemoAgendaEvent } from "../../lib/types/domain";
 
 export default function AgendaPage() {
-  const { organization } = useOrganization();
+  const { organization, parliamentaryProfile } = useOrganization();
   const [events, setEvents] = useState<DemoAgendaEvent[]>([]);
-
-  useEffect(() => {
-    if (!organization?.id) return;
-    const supabase = createClient();
-    supabase
-      .from("agenda_events")
-      .select("*")
-      .eq("organization_id", organization.id)
-      .order("starts_at", { ascending: true })
-      .then(({ data }) => {
-        if (data) setEvents(data as DemoAgendaEvent[]);
-      });
-  }, [organization?.id]);
   const [typeFilter, setTypeFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"month" | "week" | "list">("month");
-  const [selectedDay, setSelectedDay] = useState<number>(23);
+  const [selectedDay, setSelectedDay] = useState<number>(() => new Date().getDate());
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const todayIso = new Date().toISOString().split("T")[0] || "2026-11-26";
+  const municipalityLabel =
+    parliamentaryProfile?.municipality && parliamentaryProfile?.state
+      ? `${parliamentaryProfile.municipality} / ${parliamentaryProfile.state}`
+      : organization?.municipality
+      ? `${organization.municipality}${organization.state ? ` / ${organization.state}` : ""}`
+      : "Mandato Parlamentar";
+  const currentMonthLabel = new Date().toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
 
   // Form State
   const [title, setTitle] = useState("");
   const [eventType, setEventType] = useState("session");
+  const [visibility, setVisibility] = useState<"public" | "internal" | "confidential">("public");
   const [location, setLocation] = useState("Plenário da Câmara Municipal");
-  const [eventDate, setEventDate] = useState("2026-11-23");
+  const [eventDate, setEventDate] = useState(todayIso);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("11:30");
   const [description, setDescription] = useState("");
+
+  const loadEvents = useCallback(async () => {
+    if (!organization?.id) return;
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("agenda_events")
+      .select("*")
+      .eq("organization_id", organization.id)
+      .order("starts_at", { ascending: true });
+    if (data) setEvents(data as DemoAgendaEvent[]);
+  }, [organization?.id]);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
 
   const filteredEvents = events.filter((ev) => {
     if (typeFilter === "all") return true;
     return ev.event_type === typeFilter;
   });
 
-  const handleCreateEvent = (e: React.FormEvent) => {
+  const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title) return;
+    if (!title.trim() || !organization?.id) return;
+    setSaving(true);
+    setFormError(null);
 
-    const newEv: DemoAgendaEvent = {
-      id: `ev-${Date.now()}`,
-      organization_id: "org-gabinete-mariana",
-      workspace_id: "wks-santos-01",
-      title,
-      description,
-      event_type: eventType as any,
-      status: "scheduled",
-      visibility: "public",
-      starts_at: `${eventDate}T${startTime}:00Z`,
-      ends_at: `${eventDate}T${endTime}:00Z`,
-      location,
-      created_by: "usr-mariana",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    try {
+      const startsAt = new Date(`${eventDate}T${startTime}:00`).toISOString();
+      const endsAt = new Date(`${eventDate}T${endTime}:00`).toISOString();
+      const res = await createAgendaEventAction(organization.id, {
+        title,
+        description,
+        event_type: eventType as any,
+        visibility,
+        starts_at: startsAt,
+        ends_at: endsAt,
+        location,
+      });
 
-    setEvents([newEv, ...events]);
-    setIsNewModalOpen(false);
-    setTitle("");
-    setDescription("");
+      if (!res.success) {
+        setFormError(res.error || "Erro ao agendar compromisso.");
+        return;
+      }
+
+      setIsNewModalOpen(false);
+      setTitle("");
+      setDescription("");
+      await loadEvents();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getEventTypeBadge = (type: DemoAgendaEvent["event_type"]) => {
@@ -124,11 +148,13 @@ export default function AgendaPage() {
     }
   };
 
-  const daysInMonth = Array.from({ length: 30 }, (_, i) => i + 1);
+  const now = new Date();
+  const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysInMonth = Array.from({ length: totalDays }, (_, i) => i + 1);
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   const selectedDayEvents = filteredEvents.filter((ev) => {
-    const day = parseInt(ev.starts_at.split("T")[0]?.split("-")[2] || "23", 10);
+    const day = new Date(ev.starts_at).getDate();
     return day === selectedDay;
   });
 
@@ -145,12 +171,12 @@ export default function AgendaPage() {
       }
     >
       <div className="space-y-6">
-        {/* Banner Institucional */}
         <div className="bg-mint/40 border border-green/20 rounded-lg p-3 text-xs text-green flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <CalendarIcon className="h-4 w-4 shrink-0" />
             <span>
-              <strong>Agenda Oficial do Mandato</strong> — Calendário integrado de sessões plenárias, comissões, audiências públicas e visitas às comunidades.
+              <strong>Agenda Oficial do Mandato</strong> — Compromissos com visibilidade{" "}
+              <strong>Pública</strong> aparecem automaticamente no Portal da Transparência.
             </span>
           </div>
           <div className="flex items-center gap-1 bg-white border border-line rounded-lg p-1 self-end sm:self-auto">
@@ -181,15 +207,14 @@ export default function AgendaPage() {
           </div>
         </div>
 
-        {/* Barra de Filtros e Controles do Calendário */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => setSelectedDay(23)}
+              onClick={() => setSelectedDay(new Date().getDate())}
             >
-              Hoje (23 Nov)
+              Hoje ({new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })})
             </Button>
             <div className="flex items-center border border-line rounded-lg bg-white">
               <button
@@ -198,12 +223,12 @@ export default function AgendaPage() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="font-heading font-bold text-sm text-ink px-3">
-                Novembro de 2026
+              <span className="font-heading font-bold text-sm text-ink px-3 capitalize">
+                {currentMonthLabel}
               </span>
               <button
                 className="p-1.5 hover:bg-paper text-muted"
-                onClick={() => setSelectedDay((prev) => Math.min(30, prev + 1))}
+                onClick={() => setSelectedDay((prev) => Math.min(totalDays, prev + 1))}
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -219,14 +244,13 @@ export default function AgendaPage() {
           </div>
         </div>
 
-        {/* VISUALIZAÇÃO 1: CALENDÁRIO MENSAL EM GRID */}
         {viewMode === "month" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <Card>
                 <CardHeader className="py-3 px-4 border-b border-line bg-paper/40 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <CalendarIcon className="h-4 w-4 text-green" /> Calendário Mensal — Novembro 2026
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 capitalize">
+                    <CalendarIcon className="h-4 w-4 text-green" /> Calendário Mensal — {currentMonthLabel}
                   </CardTitle>
                   <span className="text-xs text-muted">Clique em um dia para ver os detalhes</span>
                 </CardHeader>
@@ -241,11 +265,10 @@ export default function AgendaPage() {
 
                   <div className="grid grid-cols-7 gap-1.5">
                     {daysInMonth.map((day) => {
-                      const dayEvents = filteredEvents.filter((ev) => {
-                        const evDay = parseInt(ev.starts_at.split("T")[0]?.split("-")[2] || "23", 10);
-                        return evDay === day;
-                      });
-                      const isToday = day === 23;
+                      const dayEvents = filteredEvents.filter(
+                        (ev) => new Date(ev.starts_at).getDate() === day
+                      );
+                      const isToday = day === now.getDate();
                       const isSelected = day === selectedDay;
 
                       return (
@@ -285,15 +308,14 @@ export default function AgendaPage() {
                                 key={ev.id}
                                 className="text-[9px] truncate px-1 py-0.5 rounded bg-paper border border-line text-ink font-medium flex items-center gap-1"
                               >
-                                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${getEventDotColor(ev.event_type)}`} />
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full shrink-0 ${getEventDotColor(
+                                    ev.event_type
+                                  )}`}
+                                />
                                 <span className="truncate">{ev.title}</span>
                               </div>
                             ))}
-                            {dayEvents.length > 2 && (
-                              <div className="text-[8px] text-muted font-bold pl-1">
-                                +{dayEvents.length - 2} mais
-                              </div>
-                            )}
                           </div>
                         </div>
                       );
@@ -303,7 +325,6 @@ export default function AgendaPage() {
               </Card>
             </div>
 
-            {/* Painel Lateral: Compromissos do Dia Selecionado */}
             <div className="lg:col-span-1">
               <Card className="border-line sticky top-20">
                 <CardHeader className="py-3 px-4 border-b border-line bg-mint/20 flex flex-row items-center justify-between">
@@ -311,7 +332,9 @@ export default function AgendaPage() {
                     <CardTitle className="text-sm font-semibold text-ink">
                       Compromissos do Dia {selectedDay}
                     </CardTitle>
-                    <div className="text-xs text-muted">Novembro de 2026 · Santos / SP</div>
+                    <div className="text-xs text-muted capitalize">
+                      {currentMonthLabel} · {municipalityLabel}
+                    </div>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => setIsNewModalOpen(true)}>
                     <Plus className="h-4 w-4" />
@@ -332,13 +355,18 @@ export default function AgendaPage() {
                         key={ev.id}
                         className="p-3 bg-white rounded-lg border border-line hover:border-green/40 transition-colors space-y-2 text-xs"
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2">
                           <span className="font-mono text-[11px] font-bold text-muted flex items-center gap-1">
                             <Clock className="h-3 w-3 text-muted" />
-                            {ev.starts_at.split("T")[1]?.substring(0, 5) || "09:00"} -{" "}
-                            {ev.ends_at.split("T")[1]?.substring(0, 5) || "10:30"}
+                            {new Date(ev.starts_at).toLocaleTimeString("pt-BR", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
                           </span>
-                          {getEventTypeBadge(ev.event_type)}
+                          <div className="flex items-center gap-1">
+                            {ev.visibility === "public" && <Badge variant="green">Pública</Badge>}
+                            {getEventTypeBadge(ev.event_type)}
+                          </div>
                         </div>
 
                         <div className="font-semibold text-ink text-sm leading-tight">{ev.title}</div>
@@ -359,25 +387,26 @@ export default function AgendaPage() {
           </div>
         )}
 
-        {/* VISUALIZAÇÃO 2: SEMANAL EM LINHA DO TEMPO */}
         {viewMode === "week" && (
           <Card>
             <CardHeader className="py-3 px-4 border-b border-line bg-paper/30">
-              <CardTitle className="text-sm font-semibold">
-                Semana de 23 a 29 de Novembro de 2026
+              <CardTitle className="text-sm font-semibold capitalize">
+                Visão Semanal — {currentMonthLabel}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 overflow-x-auto">
               <div className="grid grid-cols-7 gap-2 min-w-[700px]">
-                {[23, 24, 25, 26, 27, 28, 29].map((dayNumber, idx) => {
-                  const dayEvents = filteredEvents.filter((ev) => {
-                    const evDay = parseInt(ev.starts_at.split("T")[0]?.split("-")[2] || "23", 10);
-                    return evDay === dayNumber;
-                  });
+                {Array.from({ length: 7 }, (_, idx) => {
+                  const dayNumber = Math.min(totalDays, Math.max(1, selectedDay - 3 + idx));
+                  const dayEvents = filteredEvents.filter(
+                    (ev) => new Date(ev.starts_at).getDate() === dayNumber
+                  );
                   return (
-                    <div key={dayNumber} className="border border-line rounded-lg p-2 bg-paper/10 min-h-[300px]">
+                    <div
+                      key={idx}
+                      className="border border-line rounded-lg p-2 bg-paper/10 min-h-[260px]"
+                    >
                       <div className="text-center pb-2 border-b border-line mb-2">
-                        <div className="text-[10px] text-muted font-bold">{weekDays[idx + 1] || "Dom"}</div>
                         <div className="text-base font-bold text-ink">{dayNumber}</div>
                       </div>
                       <div className="space-y-2">
@@ -388,7 +417,10 @@ export default function AgendaPage() {
                           >
                             <div className="font-bold text-ink leading-tight">{ev.title}</div>
                             <div className="text-[10px] text-muted font-mono">
-                              {ev.starts_at.split("T")[1]?.substring(0, 5)}
+                              {new Date(ev.starts_at).toLocaleTimeString("pt-BR", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
                             </div>
                             {getEventTypeBadge(ev.event_type)}
                           </div>
@@ -402,35 +434,45 @@ export default function AgendaPage() {
           </Card>
         )}
 
-        {/* VISUALIZAÇÃO 3: LISTA COMPLETA */}
         {viewMode === "list" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredEvents.map((ev) => (
-              <Card key={ev.id} className="border-line hover:border-green/40 transition-colors">
-                <CardHeader className="py-3 px-4 border-b border-line flex flex-row items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs text-muted">
-                    <Clock className="h-3.5 w-3.5" />
-                    <span>
-                      {ev.starts_at.split("T")[1]?.substring(0, 5) || "09:00"} -{" "}
-                      {ev.ends_at.split("T")[1]?.substring(0, 5) || "10:30"}
-                    </span>
-                  </div>
-                  {getEventTypeBadge(ev.event_type)}
-                </CardHeader>
-                <CardContent className="p-4 space-y-3">
-                  <div className="font-semibold text-ink text-sm leading-tight">{ev.title}</div>
-                  {ev.description && (
-                    <p className="text-xs text-muted leading-relaxed line-clamp-2">{ev.description}</p>
-                  )}
-                  <div className="pt-2 border-t border-line space-y-1.5 text-xs">
-                    <div className="flex items-center gap-1.5 text-muted">
-                      <MapPin className="h-3.5 w-3.5 text-muted" />
-                      <span className="truncate">{ev.location}</span>
+            {filteredEvents.length === 0 ? (
+              <div className="md:col-span-3 rounded-xl border border-line bg-white p-8 text-center text-xs text-muted">
+                Nenhum compromisso cadastrado na agenda do gabinete.
+              </div>
+            ) : (
+              filteredEvents.map((ev) => (
+                <Card key={ev.id} className="border-line hover:border-green/40 transition-colors">
+                  <CardHeader className="py-3 px-4 border-b border-line flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs text-muted">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>
+                        {new Date(ev.starts_at).toLocaleDateString("pt-BR")} ·{" "}
+                        {new Date(ev.starts_at).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    {getEventTypeBadge(ev.event_type)}
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="font-semibold text-ink text-sm leading-tight">{ev.title}</div>
+                    {ev.description && (
+                      <p className="text-xs text-muted leading-relaxed line-clamp-2">
+                        {ev.description}
+                      </p>
+                    )}
+                    <div className="pt-2 border-t border-line space-y-1.5 text-xs">
+                      <div className="flex items-center gap-1.5 text-muted">
+                        <MapPin className="h-3.5 w-3.5 text-muted" />
+                        <span className="truncate">{ev.location}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         )}
       </div>
@@ -442,12 +484,16 @@ export default function AgendaPage() {
         title="Agendar Novo Compromisso Parlamentar"
       >
         <form onSubmit={handleCreateEvent} className="space-y-4 text-xs">
+          {formError && (
+            <div className="p-2.5 rounded border border-red/30 bg-red/5 text-red">{formError}</div>
+          )}
           <div>
             <label className="font-semibold block mb-1">Título do Compromisso *</label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex.: Visita à Unidade Básica de Saúde da Zona Noroeste"
+              placeholder="Ex.: Reunião comunitária ou Sessão Ordinária"
+              required
             />
           </div>
 
@@ -467,18 +513,31 @@ export default function AgendaPage() {
               />
             </div>
             <div>
+              <label className="font-semibold block mb-1">Visibilidade *</label>
+              <Select
+                value={visibility}
+                onChange={(e) => setVisibility(e.target.value as any)}
+                options={[
+                  { value: "public", label: "Pública (Exibir no Portal)" },
+                  { value: "internal", label: "Interna do Gabinete" },
+                  { value: "confidential", label: "Restrita" },
+                ]}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
               <label className="font-semibold block mb-1">Data *</label>
               <Input
                 type="date"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
+                required
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="font-semibold block mb-1">Horário de Início</label>
+              <label className="font-semibold block mb-1">Início</label>
               <Input
                 type="time"
                 value={startTime}
@@ -486,7 +545,7 @@ export default function AgendaPage() {
               />
             </div>
             <div>
-              <label className="font-semibold block mb-1">Horário de Término</label>
+              <label className="font-semibold block mb-1">Término</label>
               <Input
                 type="time"
                 value={endTime}
@@ -500,7 +559,8 @@ export default function AgendaPage() {
             <Input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="Ex.: Rua das Flores, 142 — Bairro Gonzaga"
+              placeholder="Ex.: Plenário da Câmara Municipal ou Comunidade Rural"
+              required
             />
           </div>
 
@@ -518,8 +578,8 @@ export default function AgendaPage() {
             <Button variant="ghost" type="button" onClick={() => setIsNewModalOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="primary" type="submit">
-              Confirmar Agendamento
+            <Button variant="primary" type="submit" disabled={saving}>
+              {saving ? "Salvando..." : "Confirmar Agendamento"}
             </Button>
           </div>
         </form>

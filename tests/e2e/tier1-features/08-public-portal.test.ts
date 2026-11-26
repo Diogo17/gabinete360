@@ -11,28 +11,29 @@ describe('Tier 1: Public Portal Modules (F33, F34, F35)', { tier: 1 }, () => {
   // Feature 33: Public Portal Perfil & Transparência
   test('F33: Public parliamentary biography and transparency disclosures', () => {
     const publicProfile = {
-      parliamentary_name: 'Vereadora Mariana Costa',
+      parliamentary_name: 'Vereador Bill do Barreiro do Alegre',
+      full_name: 'Edilson Alves dos Santos',
       mandate: '2025-2028',
-      party: 'Partido Democrático',
-      city: 'São Paulo',
-      state: 'SP',
-      biography: 'Advogada e ativista pelos direitos da infância e juventude.',
+      party: 'União Brasil',
+      city: 'Januária',
+      state: 'MG',
+      biography: 'Nascido na Comunidade Quilombola de Barreiro do Alegre (distrito de Riacho da Cruz).',
       social_links: {
-        instagram: '@mariana.costa',
-        whatsapp: '+5511999998888',
-        email: 'contato@marianacosta.leg.br'
+        email: 'billdobarreiro@januaria.mg.leg.br',
+        phone: '(38) 3620-0650',
+        site: 'https://www.januaria.mg.leg.br'
       },
       transparency: {
-        propositions_count: 48,
-        inspections_count: 14,
-        demands_resolved: 312
+        propositions_count: 23,
+        votes_2024: 849,
+        portal_enabled: true
       }
     };
 
-    assertEqual(publicProfile.parliamentary_name, 'Vereadora Mariana Costa', 'Parliamentary name matches');
-    assertEqual(publicProfile.city, 'São Paulo', 'City matches');
-    assertEqual(publicProfile.transparency.propositions_count, 48, 'Propositions count matches');
-    assertTrue(publicProfile.transparency.demands_resolved > 300, 'Demands resolved threshold verified');
+    assertEqual(publicProfile.parliamentary_name, 'Vereador Bill do Barreiro do Alegre', 'Parliamentary name matches');
+    assertEqual(publicProfile.city, 'Januária', 'City matches');
+    assertEqual(publicProfile.state, 'MG', 'State matches');
+    assertTrue(publicProfile.transparency.portal_enabled, 'Portal enabled');
     assertTrue(publicProfile.biography.length > 20, 'Biography text documented');
   });
 
@@ -41,17 +42,24 @@ describe('Tier 1: Public Portal Modules (F33, F34, F35)', { tier: 1 }, () => {
     const env = createMockEnvironment({ actor: 'anon' });
 
     const allEvents = [
-      { id: 'ev-1', title: 'Sessão Solene de Abertura', visibility: 'public', starts_at: '2026-11-25T10:00:00Z' },
-      { id: 'ev-2', title: 'Reunião Interna Reservada com Lideranças', visibility: 'private', starts_at: '2026-11-25T14:00:00Z' }
+      { id: 'ev-1', title: 'Sessão Ordinária na Câmara Municipal de Januária', visibility: 'public', starts_at: '2026-11-25T20:30:00Z' },
+      { id: 'ev-2', title: 'Reunião Interna Reservada com Lideranças', visibility: 'internal', starts_at: '2026-11-25T14:00:00Z' }
+    ];
+
+    const allPropositions = [
+      { id: 'leg-1', number: '007/2025', status: 'sanctioned', is_public: true },
+      { id: 'leg-2', number: 'COMP-ABAFADOR', status: 'draft', is_public: false }
     ];
 
     // Filter public events only
     const publicEvents = allEvents.filter(e => e.visibility === 'public');
+    const publicPropositions = allPropositions.filter(p => p.is_public && p.status !== 'draft');
+
     assertEqual(publicEvents.length, 1, 'Only public events displayed');
     assertEqual(publicEvents[0].id, 'ev-1', 'Public event ID matches');
-    assertEqual(publicEvents[0].title, 'Sessão Solene de Abertura', 'Public event title matches');
-    assertFalse(publicEvents.some(e => e.visibility === 'private'), 'No private event leaked to public agenda');
-    assertTrue(publicEvents[0].visibility === 'public', 'Visibility is strictly public');
+    assertFalse(publicEvents.some(e => e.visibility !== 'public'), 'No private/internal event leaked to public agenda');
+    assertEqual(publicPropositions.length, 1, 'Only published legislative items displayed');
+    assertFalse(publicPropositions.some(p => p.status === 'draft'), 'No draft legislative items leaked to public portal');
   });
 
   // Feature 35: Public Portal Formulário Cidadão

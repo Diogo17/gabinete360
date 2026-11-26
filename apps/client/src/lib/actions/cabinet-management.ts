@@ -14,6 +14,18 @@ async function requireAuthenticatedUser(supabase: any) {
   return user;
 }
 
+async function resolveDefaultWorkspaceId(supabase: any, organizationId: string) {
+  const { data } = await supabase
+    .from("workspaces")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data?.id || null;
+}
+
 /**
  * Atualiza foto (avatar_url), descrição e link de agenda do gabinete.
  */
@@ -36,44 +48,125 @@ export async function updateCabinetProfile(
 
   if (error) return { success: false, error: error.message };
   revalidatePath("/");
+  revalidatePath("/portal");
   return { success: true };
 }
 
+export type DbLegislativeType =
+  | "bill_project"
+  | "motion"
+  | "indication"
+  | "requirement"
+  | "amendment"
+  | "decree"
+  | "resolution";
+
 /**
- * CRUD de Indicações, Projetos e Projetos de Lei (com links) no painel do cliente.
+ * CRUD real de Proposituras Legislativas (esquema oficial `public.legislative_items`).
  */
 export async function upsertLegislativeItem(
   organizationId: string,
   item: {
     id?: string;
-    kind: "indicacao" | "projeto_lei" | "requerimento" | "mocao" | "emenda";
+    type: DbLegislativeType;
     number: string;
+    year?: number;
     title: string;
-    description?: string;
+    summary: string;
     status?: string;
-    external_url?: string;
+    protocol_date?: string | null;
+    official_source_url?: string | null;
+    authorship?: string | null;
+    is_public?: boolean;
+    is_featured?: boolean;
   }
+) {
+  const supabase = await createClient();
+  const user = await requireAuthenticatedUser(supabase);
+  if (!user) {
+    return { success: false, error: "Usuário não autenticado." };
+  }
+
+  const workspaceId = await resolveDefaultWorkspaceId(supabase, organizationId);
+  if (!workspaceId) {
+    return { success: false, error: "Nenhum workspace ativo encontrado para a organização." };
+  }
+
+  const extractedYear =
+    item.year ||
+    (item.number.match(/\b(20\d{2})\b/)?.[1]
+      ? Number(item.number.match(/\b(20\d{2})\b/)![1])
+      : new Date().getFullYear());
+
+  const payload = {
+    organization_id: organizationId,
+    workspace_id: workspaceId,
+    type: item.type,
+    number: item.number.trim(),
+    year: extractedYear,
+    title: item.title.trim(),
+    summary: item.summary.trim() || item.title.trim(),
+    status: item.status || "protocol_submitted",
+    protocol_date: item.protocol_date || null,
+    official_source_url: item.official_source_url || null,
+    authorship: item.authorship || null,
+    is_public: item.is_public ?? false,
+    is_featured: item.is_featured ?? false,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = item.id
+    ? await supabase
+        .from("legislative_items")
+        .update(payload)
+        .eq("id", item.id)
+        .eq("organization_id", organizationId)
+        .select("*")
+        .single()
+    : await supabase
+        .from("legislative_items")
+        .insert({ ...payload, created_by: user.id })
+        .select("*")
+        .single();
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/legislativo");
+  revalidatePath("/portal");
+  revalidatePath("/portal/legislativo");
+  return { success: true, data };
+}
+
+export async function toggleLegislativePortalVisibility(
+  organizationId: string,
+  itemId: string,
+  isPublic: boolean,
+  isFeatured?: boolean
 ) {
   const supabase = await createClient();
   if (!(await requireAuthenticatedUser(supabase))) {
     return { success: false, error: "Usuário não autenticado." };
   }
-  const payload = {
-    organization_id: organizationId,
-    kind: item.kind,
-    number: item.number,
-    title: item.title,
-    description: item.description || null,
-    status: item.status || "draft",
-    external_url: item.external_url || null,
-  };
 
-  const { data, error } = item.id
-    ? await supabase.from("legislative_items").update(payload).eq("id", item.id).eq("organization_id", organizationId).select().single()
-    : await supabase.from("legislative_items").insert(payload).select().single();
+  const updatePayload: Record<string, unknown> = {
+    is_public: isPublic,
+    updated_at: new Date().toISOString(),
+  };
+  if (typeof isFeatured === "boolean") {
+    updatePayload.is_featured = isFeatured;
+  }
+
+  const { data, error } = await supabase
+    .from("legislative_items")
+    .update(updatePayload)
+    .eq("id", itemId)
+    .eq("organization_id", organizationId)
+    .select("*")
+    .single();
 
   if (error) return { success: false, error: error.message };
   revalidatePath("/legislativo");
+  revalidatePath("/portal");
+  revalidatePath("/portal/legislativo");
   return { success: true, data };
 }
 
@@ -90,6 +183,8 @@ export async function deleteLegislativeItem(organizationId: string, itemId: stri
 
   if (error) return { success: false, error: error.message };
   revalidatePath("/legislativo");
+  revalidatePath("/portal");
+  revalidatePath("/portal/legislativo");
   return { success: true };
 }
 
@@ -99,9 +194,12 @@ export async function deleteLegislativeItem(organizationId: string, itemId: stri
 export async function updateTeamMemberRole(
   organizationId: string,
   membershipId: string,
-  role: "admin" | "advisor" | "assistant" | "attendant" | "intern"
+  role: "parliamentarian" | "chief_of_staff" | "staff" | "advisor" | "intern"
 ) {
   const supabase = await createClient();
+  if (!(await requireAuthenticatedUser(supabase))) {
+    return { success: false, error: "Usuário não autenticado." };
+  }
   const { error } = await supabase
     .from("memberships")
     .update({ role })
@@ -115,6 +213,9 @@ export async function updateTeamMemberRole(
 
 export async function removeTeamMember(organizationId: string, membershipId: string) {
   const supabase = await createClient();
+  if (!(await requireAuthenticatedUser(supabase))) {
+    return { success: false, error: "Usuário não autenticado." };
+  }
   const { error } = await supabase
     .from("memberships")
     .update({ status: "revoked" })
@@ -127,8 +228,56 @@ export async function removeTeamMember(organizationId: string, membershipId: str
 }
 
 /**
- * CRUD de Agenda (agenda_events)
+ * CRUD de Agenda (`public.agenda_events`) com visibilidade pública/interna.
  */
+export async function createAgendaEventAction(
+  organizationId: string,
+  event: {
+    title: string;
+    description?: string;
+    event_type: "meeting" | "session" | "hearing" | "visit" | "event" | "other";
+    visibility: "public" | "internal" | "confidential";
+    starts_at: string;
+    ends_at: string;
+    location: string;
+  }
+) {
+  const supabase = await createClient();
+  const user = await requireAuthenticatedUser(supabase);
+  if (!user) {
+    return { success: false, error: "Usuário não autenticado." };
+  }
+
+  const workspaceId = await resolveDefaultWorkspaceId(supabase, organizationId);
+  if (!workspaceId) {
+    return { success: false, error: "Nenhum workspace ativo encontrado para a organização." };
+  }
+
+  const { data, error } = await supabase
+    .from("agenda_events")
+    .insert({
+      organization_id: organizationId,
+      workspace_id: workspaceId,
+      title: event.title.trim(),
+      description: event.description?.trim() || null,
+      event_type: event.event_type,
+      visibility: event.visibility,
+      status: "scheduled",
+      starts_at: event.starts_at,
+      ends_at: event.ends_at,
+      location: event.location.trim(),
+      created_by: user.id,
+    })
+    .select("*")
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/agenda");
+  revalidatePath("/");
+  revalidatePath("/portal");
+  return { success: true, data };
+}
+
 export async function deleteAgendaEvent(organizationId: string, eventId: string) {
   const supabase = await createClient();
   if (!(await requireAuthenticatedUser(supabase))) {
@@ -142,6 +291,7 @@ export async function deleteAgendaEvent(organizationId: string, eventId: string)
 
   if (error) return { success: false, error: error.message };
   revalidatePath("/agenda");
+  revalidatePath("/portal");
   return { success: true };
 }
 
@@ -150,6 +300,9 @@ export async function deleteAgendaEvent(organizationId: string, eventId: string)
  */
 export async function toggleTaskStatus(organizationId: string, taskId: string, status: string) {
   const supabase = await createClient();
+  if (!(await requireAuthenticatedUser(supabase))) {
+    return { success: false, error: "Usuário não autenticado." };
+  }
   const { error } = await supabase
     .from("tasks")
     .update({ status })
@@ -163,6 +316,9 @@ export async function toggleTaskStatus(organizationId: string, taskId: string, s
 
 export async function deleteTask(organizationId: string, taskId: string) {
   const supabase = await createClient();
+  if (!(await requireAuthenticatedUser(supabase))) {
+    return { success: false, error: "Usuário não autenticado." };
+  }
   const { error } = await supabase
     .from("tasks")
     .delete()
@@ -179,6 +335,9 @@ export async function deleteTask(organizationId: string, taskId: string) {
  */
 export async function deleteCitizen(organizationId: string, citizenId: string) {
   const supabase = await createClient();
+  if (!(await requireAuthenticatedUser(supabase))) {
+    return { success: false, error: "Usuário não autenticado." };
+  }
   const { error } = await supabase
     .from("citizens")
     .delete()

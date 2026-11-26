@@ -4,7 +4,17 @@
 
 import { UUID, ISODateString } from './common';
 
-export type UserRole = 'owner' | 'admin' | 'advisor' | 'assistant' | 'intern' | 'citizen';
+export type UserRole =
+  | 'parliamentarian'
+  | 'chief_of_staff'
+  | 'staff'
+  | 'owner'
+  | 'admin'
+  | 'advisor'
+  | 'assistant'
+  | 'attendant'
+  | 'intern'
+  | 'citizen';
 export type MembershipStatus = 'invited' | 'active' | 'suspended' | 'revoked';
 
 export interface UserProfile {
@@ -14,6 +24,7 @@ export interface UserProfile {
   phone?: string | null;
   locale: string;
   role_title?: string;
+  institutional_role?: string | null;
 }
 
 export interface Organization {
@@ -23,10 +34,51 @@ export interface Organization {
   slug: string;
   kind: 'individual' | 'chamber';
   status: 'active' | 'read_only' | 'suspended' | 'closing' | 'archived';
-  parliamentarian_name?: string;
-  municipality?: string;
-  state?: string;
+  parliamentarian_name?: string | null;
+  municipality?: string | null;
+  state?: string | null;
+  avatar_url?: string | null;
+  description?: string | null;
+  agenda_sync_url?: string | null;
   created_at: ISODateString;
+}
+
+export interface ParliamentaryProfile {
+  id: UUID;
+  organization_id: UUID;
+  default_workspace_id?: UUID | null;
+  portal_slug?: string | null;
+  cabinet_name?: string | null;
+  jurisdiction: 'municipal' | 'state' | 'federal';
+  institution_type: 'city_council' | 'state_assembly' | 'house' | 'senate';
+  parliamentary_role: 'vereador' | 'deputado_estadual' | 'deputado_federal' | 'senador';
+  legislator_name: string;
+  full_name?: string | null;
+  party?: string | null;
+  state: string;
+  municipality?: string | null;
+  district?: string | null;
+  legislature_number?: string | null;
+  term_start?: string | null;
+  term_end?: string | null;
+  office_address?: string | null;
+  official_email?: string | null;
+  official_phone?: string | null;
+  official_site?: string | null;
+  logo_url?: string | null;
+  avatar_url?: string | null;
+  bio_headline?: string | null;
+  biography?: string | null;
+  highlights?: string[];
+  chamber_name?: string | null;
+  chamber_address?: string | null;
+  chamber_cep?: string | null;
+  portal_enabled?: boolean;
+  portal_cta_label?: string | null;
+  neighborhood_placeholder?: string | null;
+  status: 'active' | 'inactive';
+  created_at: ISODateString;
+  updated_at: ISODateString;
 }
 
 export interface Workspace {
@@ -219,14 +271,25 @@ export type LegislativeType =
 
 export type LegislativeStatus =
   | 'draft'
-  | 'protocolled'
+  | 'generated'
+  | 'needs_review'
+  | 'reviewed'
+  | 'approved'
+  | 'ready_to_sign'
+  | 'signed'
+  | 'exported'
+  | 'protocol_pending'
+  | 'protocol_submitted'
+  | 'protocol_confirmed'
   | 'in_commission'
   | 'floor_vote'
-  | 'approved'
   | 'rejected'
   | 'sanctioned'
   | 'vetoed'
-  | 'promulgated';
+  | 'promulgated'
+  | 'returned'
+  | 'archived'
+  | 'cancelled';
 
 export interface LegislativeItem {
   id: UUID;
@@ -243,6 +306,8 @@ export interface LegislativeItem {
   official_source_url?: string | null;
   authorship?: string | null;
   content?: string | null;
+  is_public?: boolean;
+  is_featured?: boolean;
   created_by: UUID;
   created_at: ISODateString;
   updated_at: ISODateString;

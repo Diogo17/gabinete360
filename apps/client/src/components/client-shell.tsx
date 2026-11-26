@@ -21,6 +21,7 @@ import {
   HelpCircle,
   UserCheck,
   Globe,
+  Settings,
 } from "lucide-react";
 
 export interface ClientShellProps {
@@ -36,7 +37,7 @@ export function ClientShell({
 }: ClientShellProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { organization, profile } = useOrganization();
+  const { organization, profile, parliamentaryProfile } = useOrganization();
 
   const isRouteActive = (routePath: string) => {
     if (routePath === "/" || routePath === "/dashboard") {
@@ -95,6 +96,13 @@ export function ClientShell({
           icon: <UserCheck className="h-4 w-4" />,
           active: isRouteActive("/equipe"),
           onClick: () => router.push("/equipe"),
+        },
+        {
+          label: "Perfil & Portal Público",
+          href: "/configuracoes",
+          icon: <Settings className="h-4 w-4" />,
+          active: isRouteActive("/configuracoes"),
+          onClick: () => router.push("/configuracoes"),
         },
       ],
     },
@@ -155,10 +163,17 @@ export function ClientShell({
       items: [
         {
           label: "Portal Público do Mandato",
-          href: "/portal",
+          href: parliamentaryProfile?.portal_slug
+            ? `/portal/${parliamentaryProfile.portal_slug}`
+            : "/portal",
           icon: <Globe className="h-4 w-4" />,
           active: isRouteActive("/portal"),
-          onClick: () => router.push("/portal"),
+          onClick: () =>
+            router.push(
+              parliamentaryProfile?.portal_slug
+                ? `/portal/${parliamentaryProfile.portal_slug}`
+                : "/portal"
+            ),
         },
       ],
     },
@@ -177,8 +192,15 @@ export function ClientShell({
       orgName={organization?.name || "Gabinete"}
       orgSubtitle={organization?.kind === "chamber" ? "Câmara Municipal" : organization?.municipality ? `${organization.municipality} · ${organization.state}` : "Mandato Parlamentar"}
       orgInitials={organization?.name?.substring(0, 2).toUpperCase() || "G3"}
-      userName={profile?.display_name || "Usuário"}
-      userRole={profile?.role_title || "Membro da Equipe"}
+      userName={profile?.display_name || parliamentaryProfile?.legislator_name || "Usuário"}
+      userRole={
+        profile?.institutional_role ||
+        profile?.role_title ||
+        (parliamentaryProfile?.legislature_number
+          ? `Vereador (${parliamentaryProfile.legislature_number})`
+          : "Membro da Equipe")
+      }
+      userAvatarSrc={profile?.avatar_path || parliamentaryProfile?.avatar_url || organization?.avatar_url || undefined}
       userInitials={profile?.display_name?.substring(0, 2).toUpperCase() || "US"}
       navGroups={navGroups}
       breadcrumbs={defaultBreadcrumbs}
@@ -188,7 +210,7 @@ export function ClientShell({
         await signOut();
       }}
       onProfileClick={() => {
-        router.push("/equipe");
+        router.push("/configuracoes");
       }}
       topbarActions={
         <div className="flex items-center gap-2">

@@ -69,15 +69,15 @@ export async function POST(req: NextRequest) {
         .limit(10),
       supabase
         .from("agenda_events")
-        .select("id, title, start_at, location")
+        .select("id, title, starts_at, location")
         .eq("organization_id", orgId)
-        .gte("start_at", now.toISOString())
-        .lte("start_at", horizon.toISOString())
-        .order("start_at", { ascending: true })
+        .gte("starts_at", now.toISOString())
+        .lte("starts_at", horizon.toISOString())
+        .order("starts_at", { ascending: true })
         .limit(10),
       supabase
         .from("legislative_items")
-        .select("id, kind, number, title, status")
+        .select("id, type, number, title, status")
         .eq("organization_id", orgId)
         .neq("status", "archived")
         .order("created_at", { ascending: false })
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
         upcomingEventsCount: summaryData.upcomingEventsCount,
         activeLegislativeCount: summaryData.activeLegislativeCount,
         topDemands: summaryData.demands.slice(0, 5).map((d) => ({ title: d.title, priority: d.priority, status: d.status })),
-        nextEvents: summaryData.events.slice(0, 5).map((e) => ({ title: e.title, start_at: e.start_at })),
+        nextEvents: summaryData.events.slice(0, 5).map((e) => ({ title: e.title, starts_at: e.starts_at })),
       })}`;
 
       const aiRes = await fetch(

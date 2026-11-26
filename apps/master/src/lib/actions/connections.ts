@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient, createClient } from "../supabase/server";
 
-async function requireMasterAdmin(): Promise<{ ok: true } | { ok: false; error: string }> {
+async function requireMasterAdmin(): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const userClient = await createClient();
   const {
     data: { user },
@@ -26,7 +26,7 @@ async function requireMasterAdmin(): Promise<{ ok: true } | { ok: false; error: 
     return { ok: false, error: "Acesso negado. Usuário não é administrador ativo da plataforma." };
   }
 
-  return { ok: true };
+  return { ok: true, userId: user.id };
 }
 
 export interface ConnectionConfigInput {
@@ -51,6 +51,14 @@ export interface LegislativeLinkInput {
   externalUrl?: string;
   authorName?: string;
 }
+
+const KIND_TO_DB_TYPE: Record<LegislativeLinkInput["kind"], string> = {
+  indicacao: "indication",
+  projeto_lei: "bill_project",
+  requerimento: "requirement",
+  mocao: "motion",
+  emenda: "amendment",
+};
 
 /**
  * Cria ou atualiza uma conexão/organização a partir do Painel Master,
@@ -106,17 +114,35 @@ export async function addLegislativeItemFromMaster(input: LegislativeLinkInput) 
     }
 
     const supabase = await createAdminClient();
+    const { data: workspace } = await supabase
+      .from("workspaces")
+      .select("id")
+      .eq("organization_id", input.organizationId)
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+
+    if (!workspace?.id) {
+      return { success: false, error: "Organização sem workspace ativo." };
+    }
+
+    const yearMatch = input.number.match(/\b(20\d{2})\b/)?.[1];
+
     const { data, error } = await supabase
       .from("legislative_items")
       .insert({
         organization_id: input.organizationId,
-        kind: input.kind,
+        workspace_id: workspace.id,
+        type: KIND_TO_DB_TYPE[input.kind] || "bill_project",
         number: input.number,
+        year: yearMatch ? Number(yearMatch) : new Date().getFullYear(),
         title: input.title,
-        description: input.description || null,
-        external_url: input.externalUrl || null,
-        author_name: input.authorName || null,
-        status: "filed",
+        summary: input.description || input.title,
+        official_source_url: input.externalUrl || null,
+        authorship: input.authorName || null,
+        status: "protocol_submitted",
+        is_public: true,
+        created_by: auth.userId,
       })
       .select()
       .single();

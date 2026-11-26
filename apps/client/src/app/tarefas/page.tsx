@@ -79,11 +79,11 @@ export default function TarefasPage() {
 
     const newTask: DemoTask = {
       id: `task-${Date.now()}`,
-      organization_id: "org-gabinete-mariana",
-      workspace_id: "wks-santos-01",
+      organization_id: organization?.id || "",
+      workspace_id: "",
       title,
       description: "Tarefa interna do gabinete parlamentar.",
-      assigned_to: "usr-ana",
+      assigned_to: "",
       assigned_name: assignedTo,
       status: "in_progress",
       priority: priority as any,
@@ -191,7 +191,7 @@ export default function TarefasPage() {
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex.: Redigir ofício à CET sobre sinalização"
+              placeholder="Ex.: Elaborar ofício de indicação ao Executivo"
             />
           </div>
 
@@ -202,10 +202,10 @@ export default function TarefasPage() {
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
                 options={[
-                  { value: "Ana Souza", label: "Ana Souza (Chefe de Gabinete)" },
-                  { value: "Rafael Lima", label: "Rafael Lima (Assessor Jurídico)" },
-                  { value: "Mariana Costa", label: "Mariana Costa (Vereadora)" },
-                  { value: "Carlos Eduardo", label: "Carlos Eduardo (Comunicação)" },
+                  { value: "Titular do Mandato", label: "Titular do Mandato" },
+                  { value: "Chefia de Gabinete", label: "Chefia de Gabinete" },
+                  { value: "Assessoria Legislativa", label: "Assessoria Legislativa" },
+                  { value: "Atendimento", label: "Equipe de Atendimento" },
                 ]}
               />
             </div>

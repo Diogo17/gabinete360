@@ -1,47 +1,67 @@
 import type { UserRole } from "@gabinete360/types";
 import { getCurrentMembership } from "../auth/actions";
 
-export type CabinetRole = "owner" | "admin" | "advisor" | "assistant" | "attendant" | "intern" | "citizen";
+export type CabinetRole =
+  | "parliamentarian"
+  | "chief_of_staff"
+  | "staff"
+  | "owner"
+  | "admin"
+  | "advisor"
+  | "assistant"
+  | "attendant"
+  | "intern"
+  | "citizen";
+
+const OWNER_PERMISSIONS = [
+  "demands.create",
+  "demands.edit",
+  "demands.delete",
+  "team.manage",
+  "settings.edit",
+  "reports.view",
+  "agenda.create",
+  "agenda.edit",
+  "agenda.delete",
+  "citizens.create",
+  "citizens.edit",
+  "citizens.delete",
+  "legislative.manage",
+  "inspections.manage",
+];
+
+const ADMIN_PERMISSIONS = [
+  "demands.create",
+  "demands.edit",
+  "demands.delete",
+  "team.manage",
+  "settings.edit",
+  "reports.view",
+  "agenda.create",
+  "agenda.edit",
+  "citizens.create",
+  "citizens.edit",
+  "legislative.manage",
+  "inspections.manage",
+];
+
+const ADVISOR_PERMISSIONS = [
+  "demands.create",
+  "demands.edit",
+  "agenda.create",
+  "citizens.create",
+  "citizens.edit",
+  "legislative.create",
+  "inspections.create",
+];
 
 export const ROLE_PERMISSIONS: Record<CabinetRole, string[]> = {
-  owner: [
-    "demands.create",
-    "demands.edit",
-    "demands.delete",
-    "team.manage",
-    "settings.edit",
-    "reports.view",
-    "agenda.create",
-    "agenda.edit",
-    "agenda.delete",
-    "citizens.create",
-    "citizens.edit",
-    "citizens.delete",
-    "legislative.manage",
-    "inspections.manage",
-  ],
-  admin: [
-    "demands.create",
-    "demands.edit",
-    "demands.delete",
-    "team.manage",
-    "reports.view",
-    "agenda.create",
-    "agenda.edit",
-    "citizens.create",
-    "citizens.edit",
-    "legislative.manage",
-    "inspections.manage",
-  ],
-  advisor: [
-    "demands.create",
-    "demands.edit",
-    "agenda.create",
-    "citizens.create",
-    "citizens.edit",
-    "legislative.create",
-    "inspections.create",
-  ],
+  parliamentarian: OWNER_PERMISSIONS,
+  chief_of_staff: ADMIN_PERMISSIONS,
+  staff: ADVISOR_PERMISSIONS,
+  owner: OWNER_PERMISSIONS,
+  admin: ADMIN_PERMISSIONS,
+  advisor: ADVISOR_PERMISSIONS,
   assistant: [
     "demands.create",
     "citizens.create",

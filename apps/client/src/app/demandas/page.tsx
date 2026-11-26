@@ -59,9 +59,30 @@ export default function DemandasPage() {
         setUiState("error");
         return;
       }
-      const rows = (res.data || []) as DemoDemand[];
-      setDemands(rows);
-      setUiState(rows.length === 0 ? "empty" : "normal");
+      const mapped: DemoDemand[] = (res.data || []).map((d: any) => ({
+        id: d.id,
+        organization_id: d.organization_id,
+        workspace_id: d.workspace_id,
+        protocol: d.protocol || `DEM-${d.id.slice(0, 8).toUpperCase()}`,
+        citizen_name: d.requester_name || d.citizen_name || "Munícipe",
+        preferred_channel: d.source_channel === "portal" ? "in_person" : "whatsapp",
+        title: d.title,
+        description: d.description || "",
+        category: "outros",
+        priority: (d.priority || "medium") as any,
+        status: d.status as any,
+        classification: (d.classification || "internal") as any,
+        neighborhood: d.location_text || "Não informado",
+        location_text: d.location_text || "Não informado",
+        assigned_to: "",
+        assigned_name: "Equipe",
+        due_at: d.due_at || new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        events: [],
+        created_at: d.created_at,
+        updated_at: d.updated_at || d.created_at,
+      }));
+      setDemands(mapped);
+      setUiState(mapped.length === 0 ? "empty" : "normal");
     } catch {
       setUiState("error");
     }
@@ -76,49 +97,12 @@ export default function DemandasPage() {
   // Form State
   const [title, setTitle] = useState("");
   const [citizenName, setCitizenName] = useState("");
-  const [neighborhood, setNeighborhood] = useState("Jardim das Flores");
+  const [neighborhood, setNeighborhood] = useState("");
   const [category, setCategory] = useState("iluminacao");
   const [priority, setPriority] = useState("normal");
   const [description, setDescription] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Carrega demandas do Supabase ao montar
-  React.useEffect(() => {
-    async function loadRealDemands() {
-      try {
-        const res = await getDemandsAction();
-        if (res.success && res.data && res.data.length > 0) {
-          const mapped: DemoDemand[] = res.data.map((d: any) => ({
-            id: d.id,
-            organization_id: d.organization_id,
-            workspace_id: d.workspace_id,
-            protocol: `DEM-${d.id.slice(0, 8).toUpperCase()}`,
-            citizen_name: d.citizen_name || "Munícipe",
-            preferred_channel: "whatsapp",
-            title: d.title,
-            description: d.description || "",
-            category: "iluminacao",
-            priority: "normal",
-            status: d.status as any,
-            classification: "public",
-            neighborhood: "Bairro Central",
-            location_text: "Santos - SP",
-            assigned_to: "usr-ana-souza",
-            assigned_name: "Ana Souza",
-            due_at: d.due_at || new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-            events: [],
-            created_at: d.created_at,
-            updated_at: d.updated_at || d.created_at,
-          }));
-          setDemands((prev) => [...mapped, ...prev]);
-        }
-      } catch (e) {
-        console.warn("Falha ao carregar demandas do Supabase:", e);
-      }
-    }
-    loadRealDemands();
-  }, []);
 
   const filteredDemands = demands.filter((d) => {
     const matchSearch =
@@ -174,8 +158,8 @@ export default function DemandasPage() {
 
       const newDemand: DemoDemand = {
         id: saveResult.data?.id || `dem-${Date.now()}`,
-        organization_id: "org-gabinete-mariana",
-        workspace_id: "wks-santos-01",
+        organization_id: saveResult.data?.organization_id || "",
+        workspace_id: saveResult.data?.workspace_id || "",
         protocol: protocolCode,
         citizen_name: citizenName || "Munícipe Geral",
         preferred_channel: "whatsapp",
@@ -187,8 +171,8 @@ export default function DemandasPage() {
         classification: "public",
         neighborhood,
         location_text: neighborhood,
-        assigned_to: "usr-ana-souza",
-        assigned_name: "Ana Souza",
+        assigned_to: "",
+        assigned_name: "Equipe",
         due_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
         events: [],
         created_at: new Date().toISOString(),
@@ -558,7 +542,7 @@ export default function DemandasPage() {
               <Input
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
-                placeholder="Ex.: Jardim das Flores"
+                placeholder="Ex.: Centro ou Comunidade Rural"
                 error={formErrors.neighborhood}
               />
             </div>

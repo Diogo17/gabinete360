@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
         .limit(10),
       supabase
         .from("legislative_items")
-        .select("id, kind, number, title, status")
+        .select("id, type, number, title, status")
         .eq("organization_id", orgId)
         .ilike("title", pattern)
         .limit(10),

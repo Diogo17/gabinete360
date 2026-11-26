@@ -1,7 +1,13 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import type { Organization, Membership, UserProfile, UserRole } from "@gabinete360/types";
+import type {
+  Organization,
+  Membership,
+  UserProfile,
+  UserRole,
+  ParliamentaryProfile,
+} from "@gabinete360/types";
 import { createClient } from "../supabase/client";
 
 export interface OrganizationContextValue {
@@ -10,6 +16,7 @@ export interface OrganizationContextValue {
   membership: Membership | null;
   role: UserRole | null;
   profile: UserProfile | null;
+  parliamentaryProfile: ParliamentaryProfile | null;
   availableOrganizations: Organization[];
   isLoading: boolean;
   switchOrganization: (slug: string) => Promise<void>;
@@ -37,9 +44,27 @@ export function OrganizationProvider({
   const [availableOrganizations, setAvailableOrganizations] = useState<Organization[]>(initialOrganizations);
   const [organization, setOrganization] = useState<Organization | null>(initialOrganization);
   const [membership, setMembership] = useState<Membership | null>(initialMembership);
+  const [parliamentaryProfile, setParliamentaryProfile] = useState<ParliamentaryProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(!initialOrganization);
 
-  // Fetch real organizations and membership from Supabase on mount
+  const loadParliamentaryProfile = useCallback(async (orgId: string | undefined) => {
+    if (!orgId) {
+      setParliamentaryProfile(null);
+      return;
+    }
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("parliamentary_profiles")
+        .select("*")
+        .eq("organization_id", orgId)
+        .maybeSingle();
+      setParliamentaryProfile((data as ParliamentaryProfile | null) ?? null);
+    } catch {
+      setParliamentaryProfile(null);
+    }
+  }, []);
+
   useEffect(() => {
     if (initialOrganization && initialMembership) return;
 
@@ -47,14 +72,15 @@ export function OrganizationProvider({
       setIsLoading(true);
       try {
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
         if (!user) {
           setIsLoading(false);
           return;
         }
 
-        // Fetch active memberships with organization data
         const { data: memberships, error: memErr } = await supabase
           .from("memberships")
           .select("*, organization:organizations(*)")
@@ -66,27 +92,25 @@ export function OrganizationProvider({
           return;
         }
 
-        // Fetch user profile separately (memberships.user_id -> auth.users)
         const { data: profileData } = await supabase
           .from("profiles")
           .select("*")
           .eq("user_id", user.id)
           .maybeSingle();
 
-        // Set available organizations from memberships
         const orgs = memberships
           .map((m: any) => m.organization)
           .filter(Boolean) as Organization[];
         setAvailableOrganizations(orgs);
 
-        // Select first organization or match initial slug
         const targetMembership = initialSlug
           ? memberships.find((m: any) => m.organization?.slug === initialSlug) || memberships[0]
           : memberships[0];
 
         if (targetMembership) {
-          setOrganization(targetMembership.organization || null);
-          setSlug(targetMembership.organization?.slug || "");
+          const orgObj = (targetMembership.organization || null) as Organization | null;
+          setOrganization(orgObj);
+          setSlug(orgObj?.slug || "");
           setMembership({
             id: targetMembership.id,
             organization_id: targetMembership.organization_id,
@@ -97,6 +121,7 @@ export function OrganizationProvider({
             created_at: targetMembership.created_at,
             profile: profileData || null,
           });
+          await loadParliamentaryProfile(orgObj?.id);
         }
       } catch (err) {
         console.error("Erro ao carregar contexto de organização:", err);
@@ -106,59 +131,82 @@ export function OrganizationProvider({
     }
 
     loadUserContext();
-  }, [initialOrganization, initialMembership, initialSlug]);
+  }, [initialOrganization, initialMembership, initialSlug, loadParliamentaryProfile]);
 
-  const switchOrganization = useCallback(async (targetSlug: string) => {
-    setIsLoading(true);
-    try {
-      const targetOrg = availableOrganizations.find((o) => o.slug === targetSlug);
-      if (!targetOrg) return;
+  const switchOrganization = useCallback(
+    async (targetSlug: string) => {
+      setIsLoading(true);
+      try {
+        const targetOrg = availableOrganizations.find((o) => o.slug === targetSlug);
+        if (!targetOrg) return;
 
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
 
-      const { data: mem } = await supabase
-        .from("memberships")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("organization_id", targetOrg.id)
-        .eq("status", "active")
-        .maybeSingle();
+        const [{ data: mem }, { data: profileData }] = await Promise.all([
+          supabase
+            .from("memberships")
+            .select("*")
+            .eq("user_id", user.id)
+            .eq("organization_id", targetOrg.id)
+            .eq("status", "active")
+            .maybeSingle(),
+          supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+        ]);
 
-      setSlug(targetSlug);
-      setOrganization(targetOrg);
-      if (mem) {
-        setMembership({
-          id: mem.id,
-          organization_id: mem.organization_id,
-          user_id: mem.user_id,
-          role: mem.role,
-          status: mem.status,
-          joined_at: mem.joined_at,
-          created_at: mem.created_at,
-          profile: mem.profile || null,
-        });
+        setSlug(targetSlug);
+        setOrganization(targetOrg);
+        if (mem) {
+          setMembership({
+            id: mem.id,
+            organization_id: mem.organization_id,
+            user_id: mem.user_id,
+            role: mem.role,
+            status: mem.status,
+            joined_at: mem.joined_at,
+            created_at: mem.created_at,
+            profile: profileData || null,
+          });
+        }
+        await loadParliamentaryProfile(targetOrg.id);
+      } finally {
+        setIsLoading(false);
       }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [availableOrganizations]);
+    },
+    [availableOrganizations, loadParliamentaryProfile]
+  );
 
   const refreshMembership = useCallback(async () => {
     setIsLoading(true);
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || !organization) return;
 
-      const { data: mem } = await supabase
-        .from("memberships")
-        .select("*, profile:profiles(*)")
-        .eq("user_id", user.id)
-        .eq("organization_id", organization.id)
-        .eq("status", "active")
-        .maybeSingle();
+      const [{ data: mem }, { data: orgData }, { data: profileData }] = await Promise.all([
+        supabase
+          .from("memberships")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("organization_id", organization.id)
+          .eq("status", "active")
+          .maybeSingle(),
+        supabase.from("organizations").select("*").eq("id", organization.id).maybeSingle(),
+        supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+      ]);
+
+      if (orgData) {
+        const updatedOrg = orgData as Organization;
+        setOrganization(updatedOrg);
+        setAvailableOrganizations((prev) =>
+          prev.map((o) => (o.id === updatedOrg.id ? updatedOrg : o))
+        );
+      }
 
       if (mem) {
         setMembership({
@@ -169,13 +217,14 @@ export function OrganizationProvider({
           status: mem.status,
           joined_at: mem.joined_at,
           created_at: mem.created_at,
-          profile: mem.profile || null,
+          profile: profileData || null,
         });
       }
+      await loadParliamentaryProfile(organization.id);
     } finally {
       setIsLoading(false);
     }
-  }, [organization]);
+  }, [organization, loadParliamentaryProfile]);
 
   const value: OrganizationContextValue = {
     organization,
@@ -183,6 +232,7 @@ export function OrganizationProvider({
     membership,
     role: membership?.role || null,
     profile: membership?.profile || null,
+    parliamentaryProfile,
     availableOrganizations,
     isLoading,
     switchOrganization,

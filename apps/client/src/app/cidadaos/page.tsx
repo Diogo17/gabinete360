@@ -69,7 +69,7 @@ export default function CidadaosPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [neighborhood, setNeighborhood] = useState("Jardim das Flores");
+  const [neighborhood, setNeighborhood] = useState("");
   const [preferredChannel, setPreferredChannel] = useState("whatsapp");
   const [tagInput, setTagInput] = useState("Liderança Comunitária");
   const [notes, setNotes] = useState("");
@@ -108,15 +108,15 @@ export default function CidadaosPage() {
 
     const newCitizen: DemoCitizen = {
       id: `cit-${Date.now()}`,
-      organization_id: "org-gabinete-mariana",
+      organization_id: organization?.id || "",
       name,
       display_name: name,
       phone,
       email: email || null,
       preferred_channel: preferredChannel as any,
       neighborhood,
-      city: "Santos",
-      state: "SP",
+      city: organization?.municipality || "",
+      state: organization?.state || "",
       tags: [tagInput],
       notes,
       status: "active",
@@ -441,7 +441,7 @@ export default function CidadaosPage() {
               <Input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+55 13 99999-8888"
+                placeholder="(38) 99999-0000"
                 error={formErrors.phone}
               />
             </div>
@@ -450,7 +450,7 @@ export default function CidadaosPage() {
               <Input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="maria@exemplo.com.br"
+                placeholder="cidadao@exemplo.com.br"
                 error={formErrors.email}
               />
             </div>
@@ -462,7 +462,7 @@ export default function CidadaosPage() {
               <Input
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
-                placeholder="Ex.: Gonzaga"
+                placeholder="Ex.: Centro"
                 error={formErrors.neighborhood}
               />
             </div>

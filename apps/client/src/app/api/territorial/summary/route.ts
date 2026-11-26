@@ -31,7 +31,7 @@ export async function GET() {
 
     const { data: demands, error } = await supabase
       .from("demands")
-      .select("neighborhood, priority, status")
+      .select("location_text, priority, status")
       .eq("organization_id", membership.organization_id)
       .limit(500);
 
@@ -41,7 +41,7 @@ export async function GET() {
 
     const byNeighborhood: Record<string, { total: number; urgent: number; open: number }> = {};
     for (const row of demands ?? []) {
-      const key = row.neighborhood || "Não informado";
+      const key = row.location_text || "Não informado";
       if (!byNeighborhood[key]) {
         byNeighborhood[key] = { total: 0, urgent: 0, open: 0 };
       }

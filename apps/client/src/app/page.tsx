@@ -164,7 +164,7 @@ export default function ClientDashboardPage() {
   const [formCategory, setFormCategory] = useState<any>("iluminacao");
   const [formPriority, setFormPriority] = useState<any>("urgent");
   const [formCitizenName, setFormCitizenName] = useState("");
-  const [formNeighborhood, setFormNeighborhood] = useState("Jardim das Flores");
+  const [formNeighborhood, setFormNeighborhood] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -566,7 +566,7 @@ export default function ClientDashboardPage() {
           <div>
             <Input
               label="Assunto / Título *"
-              placeholder="Ex: Iluminação pública na Praça da Sé"
+              placeholder="Ex: Iluminação pública ou manutenção de via"
               value={formTitle}
               onChange={(e) => setFormTitle(e.target.value)}
               error={formErrors.title}
@@ -587,7 +587,7 @@ export default function ClientDashboardPage() {
             <div>
               <Input
                 label="Bairro / Localidade *"
-                placeholder="Ex: Jardim das Flores"
+                placeholder="Ex: Centro ou Comunidade Rural"
                 value={formNeighborhood}
                 onChange={(e) => setFormNeighborhood(e.target.value)}
                 error={formErrors.neighborhood}

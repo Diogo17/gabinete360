@@ -36,31 +36,6 @@ interface RestrictedReport {
   content_preview: string;
 }
 
-const INITIAL_REPORTS: RestrictedReport[] = [
-  {
-    id: "den-01",
-    code: "SIGILO-2026-081",
-    subject: "Denúncia de irregularidade na pesagem de resíduos sólidos urbanos",
-    category: "desvio",
-    status: "investigando",
-    is_anonymous: true,
-    received_at: "10/11/2026",
-    access_level: "restrito_titular",
-    content_preview: "Relato de desvio de caminhões da balança pública durante o turno noturno.",
-  },
-  {
-    id: "den-02",
-    code: "SIGILO-2026-082",
-    subject: "Cobrança indevida para agendamento de consultas em posto de saúde",
-    category: "corrupcao",
-    status: "encaminhado_mp",
-    is_anonymous: false,
-    received_at: "16/11/2026",
-    access_level: "restrito_gabinete",
-    content_preview: "Áudios e mensagens comprovando exigência de valores por funcionário terceirizado.",
-  },
-];
-
 export default function DenunciasPage() {
   const [reports, setReports] = useState<RestrictedReport[]>([]);
   const [unlockedReportId, setUnlockedReportId] = useState<string | null>(null);

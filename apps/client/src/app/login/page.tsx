@@ -151,7 +151,7 @@ export default function LoginPage() {
                 <Input
                   type="email"
                   required
-                  placeholder="exemplo@camara.sp.gov.br"
+                  placeholder="exemplo@camara.mg.leg.br"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full text-xs"
