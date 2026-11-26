@@ -72,10 +72,10 @@ export default function PortalPublicoPage() {
             </div>
             <div>
               <div className="font-heading font-extrabold text-sm text-[#172B27]">
-                Gabinete Vereadora Mariana Costa
+                Gabinete Vereador Bill do Barreiro do Alegre
               </div>
               <div className="text-[10px] text-[#77847F]">
-                Câmara Municipal de Santos · SP · Portal de Transparência
+                Câmara Municipal de Januária · MG · Portal de Transparência
               </div>
             </div>
           </div>
@@ -100,39 +100,41 @@ export default function PortalPublicoPage() {
       <section className="bg-gradient-to-b from-[#E8F3ED]/60 to-transparent py-12 px-4 border-b border-[#E8EEEA]" id="biografia">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
           <div className="md:col-span-1 flex flex-col items-center md:items-start text-center md:text-left">
-            <div className="h-32 w-32 rounded-2xl bg-[#D6E5DD] border-4 border-white shadow-md grid place-items-center text-[#176B52] font-heading font-bold text-3xl">
-              MC
-            </div>
+            <img
+              src="/vereador-bill.jpg"
+              alt="Vereador Bill do Barreiro do Alegre"
+              className="h-32 w-32 rounded-2xl object-cover border-4 border-white shadow-md"
+            />
             <h1 className="mt-4 font-heading text-2xl font-extrabold text-[#172B27]">
-              Mariana Costa
+              Bill do Barreiro do Alegre
             </h1>
             <p className="text-xs font-semibold text-[#176B52] uppercase tracking-wider">
-              Vereadora · 2º Mandato
+              Edilson Alves dos Santos · Vereador (2025–2028)
             </p>
             <div className="mt-2 text-xs text-[#77847F] flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5" /> Santos, São Paulo
+              <MapPin className="h-3.5 w-3.5" /> Januária, Minas Gerais
             </div>
           </div>
 
           <div className="md:col-span-2 space-y-4 text-xs md:text-sm text-[#172B27]/80 leading-relaxed">
             <h2 className="font-heading font-bold text-lg text-[#172B27]">
-              Compromisso com a Comunidade, Transparência e Inovação Pública
+              Raízes no Campo, Representatividade Quilombola e Compromisso com Januária
             </h2>
             <p>
-              Advogada popular com especialização em Políticas Públicas e Gestão Urbana. Eleita para o 2º mandato na Câmara Municipal de Santos com foco em saúde comunitária, iluminação pública, acessibilidade nos bairros periféricos e combate à corrupção.
+              Nascido na Comunidade Quilombola de Barreiro do Alegre (distrito de Riacho da Cruz), filho e neto de trabalhadores rurais, Edilson Alves dos Santos — <strong>Bill do Barreiro do Alegre</strong> — foi presidente da associação comunitária por três mandatos, chefiou o Departamento Hídrico da Prefeitura de Januária e exerce seu mandato na Câmara Municipal (2025–2028) pelo União Brasil.
             </p>
             <p>
-              O mandato utiliza o <strong>Gabinete Digital 360°</strong> para assegurar que 100% das demandas enviadas pelos munícipes sejam registradas com protocolo formal auditável e acompanhadas até a resolução junto ao Poder Executivo.
+              O mandato utiliza o <strong>Gabinete Digital 360°</strong> para assegurar que as demandas das comunidades rurais e urbanas de Januária sejam registradas com protocolo formal e acompanhadas até a resolução junto ao Poder Executivo.
             </p>
             <div className="flex flex-wrap gap-2 pt-2">
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-white border border-[#E8EEEA] text-[#176B52]">
-                ✓ +840 Demandas Atendidas
+                ✓ 849 Votos (Eleição 2024)
               </span>
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-white border border-[#E8EEEA] text-[#176B52]">
-                ✓ 18 Projetos de Lei Aprovados
+                ✓ R$ 302.540,00 em Emendas Impositivas 2026
               </span>
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-white border border-[#E8EEEA] text-[#176B52]">
-                ✓ Fiscalização de R$ 12M em Obras
+                ✓ Comunidades Rurais e Quilombolas
               </span>
             </div>
           </div>
