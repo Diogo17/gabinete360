@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
-import { whatsappClient, resolveActiveWhatsAppNode } from "@/lib/whatsapp/client";
+import {
+  whatsappClient,
+  resolveActiveWhatsAppNode,
+  mapApiConnectionToStatus,
+  extractPhoneFromJid,
+} from "@/lib/whatsapp/client";
 
 const UuidSchema = z.string().uuid();
 
@@ -11,9 +16,12 @@ const ConnectSchema = z.object({
   phoneNumber: z.string().optional(),
 });
 
-async function requireCabinetAccess(gabineteId: string): Promise<NextResponse | null> {
+async function requireCabinetAccess(gabineteId: string) {
   if (!UuidSchema.safeParse(gabineteId).success) {
-    return NextResponse.json({ error: "gabineteId inválido" }, { status: 400 });
+    return {
+      denied: NextResponse.json({ error: "gabineteId inválido" }, { status: 400 }),
+      userClient: null,
+    };
   }
   const userClient = await createServerSupabase();
   const {
@@ -22,7 +30,10 @@ async function requireCabinetAccess(gabineteId: string): Promise<NextResponse | 
   } = await userClient.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+    return {
+      denied: NextResponse.json({ error: "Não autorizado." }, { status: 401 }),
+      userClient: null,
+    };
   }
 
   const { data: membership } = await userClient
@@ -34,10 +45,13 @@ async function requireCabinetAccess(gabineteId: string): Promise<NextResponse | 
     .maybeSingle();
 
   if (!membership) {
-    return NextResponse.json({ error: "Acesso negado a este gabinete." }, { status: 403 });
+    return {
+      denied: NextResponse.json({ error: "Acesso negado a este gabinete." }, { status: 403 }),
+      userClient: null,
+    };
   }
 
-  return null;
+  return { denied: null, userClient };
 }
 
 function getAdminSupabase() {
@@ -47,55 +61,126 @@ function getAdminSupabase() {
   return createClient(url, serviceKey);
 }
 
+function buildWebhookUrl(origin: string): string {
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || origin).replace(/\/$/, "");
+  const base = `${appUrl}/api/whatsapp/webhook`;
+  const secret = process.env.WHATSAPP_WEBHOOK_SECRET;
+  return secret ? `${base}?secret=${encodeURIComponent(secret)}` : base;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const gabineteId = req.nextUrl.searchParams.get("gabineteId");
+    const isPing = req.nextUrl.searchParams.get("ping") === "1";
+
     if (!gabineteId) {
       return NextResponse.json({ error: "gabineteId obrigatório" }, { status: 400 });
     }
-    const denied = await requireCabinetAccess(gabineteId);
-    if (denied) return denied;
+    const { denied, userClient } = await requireCabinetAccess(gabineteId);
+    if (denied || !userClient) return denied!;
 
-    const supabase = getAdminSupabase();
-    if (!supabase) {
-      return NextResponse.json({ status: "disconnected" });
+    const adminSupabase = getAdminSupabase();
+    const db = adminSupabase ?? userClient;
+    const nodeConfig = await resolveActiveWhatsAppNode(adminSupabase);
+
+    const startedAt = Date.now();
+    let apiHealth: { ok: boolean; latencyMs: number; error?: string } | undefined;
+    if (isPing) {
+      try {
+        await whatsappClient.health(nodeConfig);
+        apiHealth = { ok: true, latencyMs: Date.now() - startedAt };
+      } catch (err) {
+        apiHealth = {
+          ok: false,
+          latencyMs: Date.now() - startedAt,
+          error: err instanceof Error ? err.message : "Falha no ping",
+        };
+      }
     }
 
-    const { data: inst } = await supabase
+    const expectedName = `gabinete_${gabineteId.replace(/-/g, "").slice(0, 12)}`;
+    const { data: initialInst } = await db
       .from("whatsapp_instances")
-      .select("id, instance_name, instance_token, status")
+      .select("id, instance_name, instance_token, status, phone_number, qr_code, pairing_code")
       .eq("gabinete_id", gabineteId)
       .maybeSingle();
 
+    let inst = initialInst;
+
+    // Se a instância existir no servidor Go mas não estiver salva ainda no Supabase, sincroniza automaticamente
     if (!inst || !inst.instance_token) {
-      return NextResponse.json({ status: "disconnected" });
+      try {
+        const remoteList = await whatsappClient.fetchInstances(nodeConfig);
+        const remote = remoteList.find((item) => item.name === expectedName);
+        if (remote?.Auth?.token) {
+          const { data: upserted } = await db
+            .from("whatsapp_instances")
+            .upsert(
+              {
+                gabinete_id: gabineteId,
+                instance_name: remote.name,
+                instance_token: remote.Auth.token,
+                status: remote.connectionStatus === "online" ? "connected" : "disconnected",
+                phone_number: extractPhoneFromJid(remote.ownerJid) || null,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "gabinete_id" }
+            )
+            .select("id, instance_name, instance_token, status, phone_number, qr_code, pairing_code")
+            .maybeSingle();
+          if (upserted) inst = upserted;
+        }
+      } catch {
+        // Ignora erro de listagem na recuperação silenciosa
+      }
     }
 
-    const nodeConfig = await resolveActiveWhatsAppNode(supabase);
+    if (!inst || !inst.instance_token) {
+      return NextResponse.json({
+        status: "disconnected",
+        ...(apiHealth ? { ping: apiHealth, apiUrl: nodeConfig.baseUrl } : {}),
+      });
+    }
 
     const stateRes = await whatsappClient.getConnectionState(
       inst.instance_name,
       inst.instance_token,
       nodeConfig
     );
-    const rawState = stateRes?.instance?.state;
-    const mappedStatus =
-      rawState === "open" ? "connected" : rawState === "close" ? "disconnected" : "connecting";
+    const mappedStatus = mapApiConnectionToStatus(stateRes);
+    const phoneNumber = extractPhoneFromJid(stateRes.ownerJid) || inst.phone_number || null;
 
-    if (mappedStatus !== inst.status) {
-      await supabase
+    if (mappedStatus !== inst.status || (phoneNumber && phoneNumber !== inst.phone_number)) {
+      await db
         .from("whatsapp_instances")
         .update({
           status: mappedStatus,
-          ...(mappedStatus === "connected" ? { last_connected_at: new Date().toISOString(), qr_code: null } : {}),
+          ...(phoneNumber ? { phone_number: phoneNumber } : {}),
+          ...(mappedStatus === "connected"
+            ? { last_connected_at: new Date().toISOString(), qr_code: null, pairing_code: null }
+            : {}),
           updated_at: new Date().toISOString(),
         })
         .eq("id", inst.id);
     }
 
-    return NextResponse.json({ status: mappedStatus });
-  } catch {
-    return NextResponse.json({ status: "connecting" });
+    return NextResponse.json({
+      status: mappedStatus,
+      instanceName: inst.instance_name,
+      connectionStatus: stateRes.connectionStatus ?? null,
+      connected: Boolean(stateRes.connected),
+      loggedIn: Boolean(stateRes.loggedIn),
+      ownerJid: stateRes.ownerJid ?? null,
+      phoneNumber,
+      qrCode: mappedStatus === "connected" ? null : inst.qr_code,
+      pairingCode: mappedStatus === "connected" ? null : inst.pairing_code,
+      ...(apiHealth ? { ping: apiHealth, apiUrl: nodeConfig.baseUrl } : {}),
+    });
+  } catch (error) {
+    return NextResponse.json({
+      status: "disconnected",
+      error: error instanceof Error ? error.message : "Erro ao consultar instância",
+    });
   }
 }
 
@@ -105,37 +190,32 @@ export async function DELETE(req: NextRequest) {
     if (!gabineteId) {
       return NextResponse.json({ error: "gabineteId obrigatório" }, { status: 400 });
     }
-    const denied = await requireCabinetAccess(gabineteId);
-    if (denied) return denied;
+    const { denied, userClient } = await requireCabinetAccess(gabineteId);
+    if (denied || !userClient) return denied!;
 
-    const supabase = getAdminSupabase();
-    if (!supabase) {
-      return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY não configurada" }, { status: 500 });
-    }
+    const adminSupabase = getAdminSupabase();
+    const db = adminSupabase ?? userClient;
+    const nodeConfig = await resolveActiveWhatsAppNode(adminSupabase);
 
-    const { data: inst } = await supabase
+    const { data: inst } = await db
       .from("whatsapp_instances")
       .select("id, instance_name, instance_token")
       .eq("gabinete_id", gabineteId)
       .maybeSingle();
 
     if (inst?.instance_name && inst?.instance_token) {
-      const nodeConfig = await resolveActiveWhatsAppNode(supabase);
-      const baseUrl = nodeConfig?.baseUrl || process.env.WHATSAPP_API_URL || "https://gabinete-360-whatsapp-b6xo7.sprites.app";
-      const globalToken = nodeConfig?.globalToken || process.env.WHATSAPP_API_GLOBAL_TOKEN || "gab360_global_tok3n_2026_prod";
+      await whatsappClient
+        .logoutInstance(inst.instance_name, inst.instance_token, nodeConfig)
+        .catch(() => null);
 
-      await fetch(`${baseUrl}/instance/logout/${encodeURIComponent(inst.instance_name)}`, {
-        method: "DELETE",
-        headers: {
-          apikey: globalToken,
-          Authorization: `Bearer ${inst.instance_token}`,
-        },
-        cache: "no-store",
-      }).catch(() => null);
-
-      await supabase
+      await db
         .from("whatsapp_instances")
-        .update({ status: "disconnected", qr_code: null, pairing_code: null, updated_at: new Date().toISOString() })
+        .update({
+          status: "disconnected",
+          qr_code: null,
+          pairing_code: null,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", inst.id);
     }
 
@@ -155,50 +235,38 @@ export async function POST(req: NextRequest) {
     }
 
     const { gabineteId, phoneNumber } = parsed.data;
-    const denied = await requireCabinetAccess(gabineteId);
-    if (denied) return denied;
-    const instanceName = `gabinete_${gabineteId.replace(/-/g, "").slice(0, 12)}`;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
-    const webhookUrl = `${appUrl}/api/whatsapp/webhook`;
+    const { denied, userClient } = await requireCabinetAccess(gabineteId);
+    if (denied || !userClient) return denied!;
 
-    const supabase = getAdminSupabase();
-    const selectedNode = await resolveActiveWhatsAppNode(supabase);
+    const instanceName = `gabinete_${gabineteId.replace(/-/g, "").slice(0, 12)}`;
+    const webhookUrl = buildWebhookUrl(req.nextUrl.origin);
+
+    const adminSupabase = getAdminSupabase();
+    const db = adminSupabase ?? userClient;
+    const selectedNode = await resolveActiveWhatsAppNode(adminSupabase);
 
     let token: string | undefined;
 
-    if (supabase) {
-      const { data: existingInst } = await supabase
-        .from("whatsapp_instances")
-        .select("instance_token")
-        .eq("gabinete_id", gabineteId)
-        .maybeSingle();
-      if (existingInst?.instance_token) {
-        token = existingInst.instance_token;
-      }
+    const { data: existingInst } = await db
+      .from("whatsapp_instances")
+      .select("instance_token")
+      .eq("gabinete_id", gabineteId)
+      .maybeSingle();
+
+    if (existingInst?.instance_token) {
+      token = existingInst.instance_token;
     }
 
     if (!token) {
       try {
-        const created = await whatsappClient.createInstance(instanceName, webhookUrl, selectedNode);
+        const created = await whatsappClient.createInstance(instanceName, selectedNode);
         token = created.Auth?.token ?? created.instance?.token;
       } catch (err) {
         const msg = err instanceof Error ? err.message : "";
         if (!msg.includes("(409)")) throw err;
-        // Instância já existe no Sprite (ex.: tentativa anterior); busca token ou recria
-        const listRes = await fetch(
-          `${(selectedNode?.baseUrl || process.env.WHATSAPP_API_URL || "https://gabinete-360-whatsapp-b6xo7.sprites.app")}/instance/fetchInstances`,
-          {
-            headers: {
-              apikey: selectedNode?.globalToken || process.env.WHATSAPP_API_GLOBAL_TOKEN || "gab360_global_tok3n_2026_prod",
-            },
-            cache: "no-store",
-          }
-        );
-        if (listRes.ok) {
-          const instances = (await listRes.json()) as Array<{ name?: string; Auth?: { token?: string } }>;
-          const found = instances.find((i) => i.name === instanceName);
-          token = found?.Auth?.token;
-        }
+        const instances = await whatsappClient.fetchInstances(selectedNode);
+        const found = instances.find((i) => i.name === instanceName);
+        token = found?.Auth?.token;
       }
     }
 
@@ -209,6 +277,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Configura o webhook oficial do whatsapp-api-go (PUT /webhook/set/:instanceName)
+    await whatsappClient.setWebhook(instanceName, token, webhookUrl, selectedNode).catch((err) => {
+      console.warn("[WhatsApp Instance] Falha ao configurar webhook:", err);
+    });
+
+    // Verifica estado atual; se já estiver conectado, retorna sem gerar novo QR
+    const currentState = await whatsappClient
+      .getConnectionState(instanceName, token, selectedNode)
+      .catch(() => null);
+
+    if (currentState && mapApiConnectionToStatus(currentState) === "connected") {
+      const phone = extractPhoneFromJid(currentState.ownerJid) || null;
+      await db.from("whatsapp_instances").upsert(
+        {
+          gabinete_id: gabineteId,
+          instance_name: instanceName,
+          instance_token: token,
+          status: "connected",
+          phone_number: phone,
+          qr_code: null,
+          pairing_code: null,
+          last_connected_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "gabinete_id" }
+      );
+
+      return NextResponse.json({
+        instanceName,
+        status: "connected",
+        phoneNumber: phone,
+        qrCodeBase64: null,
+        pairingCode: null,
+      });
+    }
+
     const connectData = await whatsappClient.connectInstance(
       instanceName,
       token,
@@ -216,31 +320,35 @@ export async function POST(req: NextRequest) {
       selectedNode
     );
 
-    const qrCodeBase64 = connectData.base64 ?? null;
-    const pairingCode = connectData.pairingCode ?? null;
+    const alreadyConnected = Boolean(connectData.alreadyConnected);
+    const qrCodeBase64 = alreadyConnected ? null : (connectData.base64 ?? null);
+    const pairingCode = alreadyConnected ? null : (connectData.pairingCode ?? null);
+    const nextStatus = alreadyConnected ? "connected" : "connecting";
+    const ownerPhone = extractPhoneFromJid(connectData.ownerJid) || null;
 
-    if (supabase) {
-      const { error: upsertErr } = await supabase.from("whatsapp_instances").upsert(
-        {
-          gabinete_id: gabineteId,
-          instance_name: instanceName,
-          instance_token: token,
-          status: "connecting",
-          qr_code: qrCodeBase64,
-          pairing_code: pairingCode,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "gabinete_id" }
-      );
-      if (upsertErr) {
-        console.error("[WhatsApp Instance] Erro ao persistir instância no Supabase:", upsertErr.message);
-      }
+    const { error: upsertErr } = await db.from("whatsapp_instances").upsert(
+      {
+        gabinete_id: gabineteId,
+        instance_name: instanceName,
+        instance_token: token,
+        status: nextStatus,
+        ...(ownerPhone ? { phone_number: ownerPhone } : {}),
+        qr_code: qrCodeBase64,
+        pairing_code: pairingCode,
+        ...(alreadyConnected ? { last_connected_at: new Date().toISOString() } : {}),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "gabinete_id" }
+    );
+
+    if (upsertErr) {
+      throw new Error(`Erro ao salvar instância WhatsApp no banco: ${upsertErr.message}`);
     }
 
     return NextResponse.json({
       instanceName,
-      instanceToken: token,
-      status: "connecting",
+      status: nextStatus,
+      phoneNumber: ownerPhone,
       qrCodeBase64,
       pairingCode,
     });

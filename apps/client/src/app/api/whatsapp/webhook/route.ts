@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { extractPhoneFromJid, extractTextFromApiContent } from "@/lib/whatsapp/client";
 
 function getAdminSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -9,30 +10,29 @@ function getAdminSupabase() {
 }
 
 /**
- * Receptor de Webhooks do whatsapp-api-go.
- * Persiste eventos em tempo real no Supabase: QRCODE_UPDATED, CONNECTION_UPDATE, MESSAGES_UPSERT.
+ * Receptor de Webhooks do code-chat-br/whatsapp-api-go (v3.7.0).
+ * Suporta qrcode.update, connection.update, contacts.upsert, contacts.update, messages.upsert e send.message.
  */
 export async function POST(req: NextRequest) {
   try {
     const webhookSecret = process.env.WHATSAPP_WEBHOOK_SECRET;
-    if (!webhookSecret) {
-      return NextResponse.json(
-        { error: "WHATSAPP_WEBHOOK_SECRET não configurada no servidor." },
-        { status: 500 }
-      );
-    }
-
-    const providedSecret =
-      req.headers.get("x-webhook-secret") ||
-      req.headers.get("apikey") ||
-      req.nextUrl.searchParams.get("secret");
-    if (providedSecret !== webhookSecret) {
-      return NextResponse.json({ error: "Unauthorized webhook" }, { status: 401 });
+    if (webhookSecret) {
+      const providedSecret =
+        req.nextUrl.searchParams.get("secret") ||
+        req.headers.get("x-webhook-secret") ||
+        req.headers.get("apikey");
+      if (providedSecret !== webhookSecret) {
+        return NextResponse.json({ error: "Unauthorized webhook" }, { status: 401 });
+      }
     }
 
     const payload = await req.json();
-    const event = payload?.event as string | undefined;
-    const instanceName = payload?.instance as string | undefined;
+    const event = (payload?.event as string | undefined) || "";
+    const instanceField = payload?.instance;
+    const instanceName =
+      typeof instanceField === "string"
+        ? instanceField
+        : (instanceField?.name as string | undefined);
     const data = payload?.data as Record<string, unknown> | undefined;
 
     if (!event || !instanceName) {
@@ -54,8 +54,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, ignored: "instance_not_found" });
     }
 
-    if (event === "QRCODE_UPDATED" && data) {
-      const qrcode = (data.qrcode as Record<string, unknown> | undefined)?.base64 as string | undefined;
+    // 1. Atualização de QR Code (qrcode.update / QRCODE_UPDATED)
+    if ((event === "qrcode.update" || event === "QRCODE_UPDATED") && data) {
+      const qrcode =
+        (data.base64 as string | undefined) ||
+        ((data.qrcode as Record<string, unknown> | undefined)?.base64 as string | undefined);
       if (qrcode) {
         await supabase
           .from("whatsapp_instances")
@@ -64,41 +67,96 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (event === "CONNECTION_UPDATE" && data) {
-      const state = data.state as string | undefined;
+    // 2. Atualização de Conexão (connection.update / CONNECTION_UPDATE)
+    if ((event === "connection.update" || event === "CONNECTION_UPDATE") && data) {
+      const rawConn =
+        (data.connection as string | undefined) || (data.state as string | undefined) || "";
+      const instanceConnStatus =
+        typeof instanceField === "object" && instanceField !== null
+          ? (instanceField.connectionStatus as string | undefined)
+          : undefined;
+
       const mappedStatus =
-        state === "open" ? "connected" : state === "close" ? "disconnected" : "connecting";
+        rawConn === "open" || instanceConnStatus === "online"
+          ? "connected"
+          : rawConn === "close" || rawConn === "replaced" || rawConn === "timeout"
+          ? "disconnected"
+          : "connecting";
+
+      const ownerJid =
+        typeof instanceField === "object" && instanceField !== null
+          ? (instanceField.ownerJid as string | undefined)
+          : undefined;
+      const phone = extractPhoneFromJid(ownerJid);
+
       await supabase
         .from("whatsapp_instances")
         .update({
           status: mappedStatus,
-          ...(mappedStatus === "connected" ? { last_connected_at: new Date().toISOString(), qr_code: null } : {}),
+          ...(phone ? { phone_number: phone } : {}),
+          ...(mappedStatus === "connected"
+            ? { last_connected_at: new Date().toISOString(), qr_code: null, pairing_code: null }
+            : {}),
           updated_at: new Date().toISOString(),
         })
         .eq("id", instanceRow.id);
     }
 
-    if (event === "MESSAGES_UPSERT" && data) {
-      const key = data.key as Record<string, unknown> | undefined;
-      const remoteJid = key?.remoteJid as string | undefined;
-      const fromMe = Boolean(key?.fromMe);
-      const messageId = key?.id as string | undefined;
+    // 3. Sincronização de Contatos (contacts.upsert / contacts.update)
+    if ((event === "contacts.upsert" || event === "contacts.update") && data) {
+      const remoteJid = data.remoteJid as string | undefined;
       const pushName = (data.pushName as string | undefined) || null;
-      const msgObj = data.message as Record<string, unknown> | undefined;
-      const imageMsg = msgObj?.imageMessage as Record<string, unknown> | undefined;
-      const audioMsg = msgObj?.audioMessage as Record<string, unknown> | undefined;
-      const docMsg = msgObj?.documentMessage as Record<string, unknown> | undefined;
+      const profilePicUrl = (data.profilePicUrl as string | undefined) || null;
 
-      const msgType = imageMsg ? "image" : audioMsg ? "audio" : docMsg ? "document" : "text";
-      const textContent =
-        (msgObj?.conversation as string | undefined) ||
-        ((msgObj?.extendedTextMessage as Record<string, unknown> | undefined)?.text as string | undefined) ||
-        (imageMsg?.caption as string | undefined) ||
-        (docMsg?.caption as string | undefined) ||
-        (msgType !== "text" ? `[${msgType}]` : "");
+      if (
+        remoteJid &&
+        !remoteJid.endsWith("@g.us") &&
+        !remoteJid.endsWith("@newsletter") &&
+        remoteJid !== "status@broadcast"
+      ) {
+        const phone = extractPhoneFromJid(remoteJid);
+        await supabase.from("whatsapp_contacts").upsert(
+          {
+            gabinete_id: instanceRow.gabinete_id,
+            jid: remoteJid,
+            phone,
+            ...(pushName ? { name: pushName } : {}),
+            ...(profilePicUrl ? { profile_pic_url: profilePicUrl } : {}),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "gabinete_id,jid" }
+        );
+      }
+    }
 
-      if (remoteJid && !remoteJid.endsWith("@g.us")) {
-        const phone = remoteJid.replace(/@s\.whatsapp\.net$/, "");
+    // 4. Mensagens recebidas e enviadas (messages.upsert / send.message / MESSAGES_UPSERT)
+    if (
+      (event === "messages.upsert" || event === "send.message" || event === "MESSAGES_UPSERT") &&
+      data
+    ) {
+      // Suporta formato whatsapp-api-go v3.7.0 e fallback legado
+      const key = data.key as Record<string, unknown> | undefined;
+      const remoteJid =
+        (data.keyRemoteJid as string | undefined) || (key?.remoteJid as string | undefined);
+      const fromMe =
+        data.keyFromMe !== undefined ? Boolean(data.keyFromMe) : Boolean(key?.fromMe);
+      const messageId =
+        (data.keyId as string | undefined) || (key?.id as string | undefined);
+      const pushName = (data.pushName as string | undefined) || null;
+      const messageType = (data.messageType as string | undefined) || "text";
+      const contentObj =
+        (data.content as Record<string, unknown> | undefined) ||
+        (data.message as Record<string, unknown> | undefined);
+
+      const textContent = extractTextFromApiContent(messageType, contentObj);
+
+      if (
+        remoteJid &&
+        !remoteJid.endsWith("@g.us") &&
+        !remoteJid.endsWith("@newsletter") &&
+        remoteJid !== "status@broadcast"
+      ) {
+        const phone = extractPhoneFromJid(remoteJid);
         const { data: contact } = await supabase
           .from("whatsapp_contacts")
           .upsert(
@@ -106,7 +164,7 @@ export async function POST(req: NextRequest) {
               gabinete_id: instanceRow.gabinete_id,
               jid: remoteJid,
               phone,
-              name: pushName,
+              ...(!fromMe && pushName ? { name: pushName } : {}),
               updated_at: new Date().toISOString(),
             },
             { onConflict: "gabinete_id,jid" }
@@ -114,7 +172,7 @@ export async function POST(req: NextRequest) {
           .select("id")
           .single();
 
-        if (contact) {
+        if (contact && textContent) {
           if (messageId) {
             const { data: existingMsg } = await supabase
               .from("whatsapp_messages")
@@ -123,7 +181,12 @@ export async function POST(req: NextRequest) {
               .eq("message_id", messageId)
               .maybeSingle();
             if (existingMsg) {
-              return NextResponse.json({ ok: true, event, instance: instanceName, deduplicated: true });
+              return NextResponse.json({
+                ok: true,
+                event,
+                instance: instanceName,
+                deduplicated: true,
+              });
             }
           }
 
@@ -133,7 +196,7 @@ export async function POST(req: NextRequest) {
             contact_id: contact.id,
             message_id: messageId ?? null,
             direction: fromMe ? "outbound" : "inbound",
-            type: msgType,
+            type: messageType,
             content: textContent,
             status: fromMe ? "sent" : "delivered",
           });
