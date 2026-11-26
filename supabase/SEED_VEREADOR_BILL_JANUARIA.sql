@@ -57,6 +57,40 @@ VALUES (
 )
 ON CONFLICT DO NOTHING;
 
+-- 5b. Criar Organização da Câmara Municipal de Januária - MG e vincular o Vereador
+INSERT INTO public.organizations (id, platform_tenant_id, name, slug, kind, status, created_at)
+VALUES (
+  '11111111-1111-4111-8111-111111110002',
+  '33333333-3333-4333-8333-333333330002',
+  'Câmara Municipal de Januária - MG',
+  'camara-januaria-mg',
+  'chamber',
+  'active',
+  now()
+)
+ON CONFLICT (slug) DO NOTHING;
+
+INSERT INTO public.workspaces (id, organization_id, name, kind, status, created_at)
+VALUES (
+  '22222222-2222-4222-8222-222222220002',
+  '11111111-1111-4111-8111-111111110002',
+  'Legislatura 2025–2028',
+  'main',
+  'active',
+  now()
+)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.memberships (organization_id, user_id, status, joined_at, created_at)
+VALUES (
+  '11111111-1111-4111-8111-111111110002',
+  'e48c69ce-c99d-40f0-875f-13735a5fc235',
+  'active',
+  now(),
+  now()
+)
+ON CONFLICT DO NOTHING;
+
 -- 6. Itens Legislativos (2025–2026) — Inventário Documental Completo
 INSERT INTO public.legislative_items (organization_id, workspace_id, type, number, year, title, summary, status, created_by, created_at)
 VALUES

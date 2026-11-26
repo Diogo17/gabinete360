@@ -236,7 +236,7 @@ export default function ClientDashboardPage() {
               Bom dia, {profile?.display_name || organization?.name || "Parlamentar"}!
             </h1>
             <p className="text-xs text-muted">
-              Aqui está o panorama operacional do seu gabinete parlamentar em Santos · SP.
+              Aqui está o panorama operacional do seu gabinete parlamentar ({organization?.name || "Januária · MG"}).
             </p>
           </div>
           <div className="flex items-center gap-2">
