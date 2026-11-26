@@ -288,30 +288,30 @@ export default function ClientDashboardPage() {
         {/* NORMAL STATE */}
         {uiState === "normal" && (
           <>
-            {/* 4 Stat Cards from prototipo/index.html & Tier 1 Assertions */}
+            {/* 4 Stat Cards calculados com base nos dados reais */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
               <StatCard
                 label="Atendimentos em aberto"
-                value="24"
-                trend={{ value: "▲ +4 esta semana", isPositive: true }}
+                value={String(demandsList.filter((d) => d.status !== "resolved" && d.status !== "closed").length)}
+                caption="Base real do gabinete"
                 icon={<Inbox className="h-4 w-4" />}
               />
               <StatCard
                 label="Aguardando retorno"
-                value="8"
-                caption="3 próximos do prazo"
+                value={String(demandsList.filter((d) => d.status === "waiting").length)}
+                caption="Demandas pendentes"
                 icon={<Clock className="h-4 w-4" />}
               />
               <StatCard
                 label="Agenda de hoje"
-                value="5"
-                caption="Próximo às 10:30"
+                value="0"
+                caption="Nenhum compromisso"
                 icon={<Calendar className="h-4 w-4" />}
               />
               <StatCard
                 label="Tarefas da equipe"
-                value="12"
-                trend={{ value: "7 concluídas", isPositive: true }}
+                value="0"
+                caption="Nenhuma tarefa registrada"
                 icon={<CheckSquare className="h-4 w-4" />}
               />
             </div>
@@ -441,7 +441,9 @@ export default function ClientDashboardPage() {
                   <CardHeader className="flex-row items-center justify-between pb-3">
                     <div>
                       <CardTitle>Agenda de Hoje</CardTitle>
-                      <p className="text-xs text-muted">23 de Novembro · Segunda-feira</p>
+                      <p className="text-xs text-muted capitalize">
+                        {new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "long", weekday: "long" })}
+                      </p>
                     </div>
                     <button
                       type="button"
