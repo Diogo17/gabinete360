@@ -111,7 +111,7 @@ export default function ClientDashboardPage() {
       const [demandsRes, agendaRes] = await Promise.all([
         supabase
           .from("demands")
-          .select("id, protocol, title, status, priority, neighborhood, preferred_channel")
+          .select("id, protocol, title, status, priority, location_text")
           .eq("organization_id", organization.id)
           .order("created_at", { ascending: false })
           .limit(20),
@@ -135,8 +135,8 @@ export default function ClientDashboardPage() {
         title: d.title,
         status: d.status || "received",
         priority: d.priority || "normal",
-        neighborhood: d.neighborhood || "Não informado",
-        preferred_channel: d.preferred_channel || "presencial",
+        neighborhood: d.location_text || "Não informado",
+        preferred_channel: "presencial",
         assigned_name: "Equipe",
       }));
 
@@ -304,8 +304,8 @@ export default function ClientDashboardPage() {
               />
               <StatCard
                 label="Agenda de hoje"
-                value="0"
-                caption="Nenhum compromisso"
+                value={String(agendaEvents.length)}
+                caption={agendaEvents.length > 0 ? "Compromissos carregados" : "Nenhum compromisso"}
                 icon={<Calendar className="h-4 w-4" />}
               />
               <StatCard
