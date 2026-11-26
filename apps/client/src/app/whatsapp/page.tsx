@@ -235,12 +235,13 @@ export default function WhatsAppPage() {
     };
   }, [organization?.id, gabineteId, checkStatus, loadInbox]);
 
-  // Polling frequente enquanto estiver pareando (mantém o Sprite ativo e detecta conexão rapidamente)
+  // Polling frequente enquanto estiver pareando (2.5s) e heartbeat leve quando conectado (25s)
   useEffect(() => {
-    if (!gabineteId || status !== "connecting") return;
+    if (!gabineteId || status === "disconnected") return;
+    const intervalMs = status === "connecting" ? 2500 : 25000;
     const timer = setInterval(() => {
       checkStatus(gabineteId, false);
-    }, 2500);
+    }, intervalMs);
     return () => clearInterval(timer);
   }, [gabineteId, status, checkStatus]);
 

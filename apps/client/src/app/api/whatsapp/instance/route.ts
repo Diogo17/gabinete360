@@ -16,6 +16,16 @@ const ConnectSchema = z.object({
   phoneNumber: z.string().optional(),
 });
 
+interface SavedInstanceRow {
+  id: string;
+  instance_name: string;
+  instance_token: string | null;
+  status: string;
+  phone_number: string | null;
+  qr_code: string | null;
+  pairing_code: string | null;
+}
+
 async function requireCabinetAccess(gabineteId: string) {
   if (!UuidSchema.safeParse(gabineteId).success) {
     return {
@@ -68,6 +78,64 @@ function buildWebhookUrl(origin: string): string {
   return secret ? `${base}?secret=${encodeURIComponent(secret)}` : base;
 }
 
+/**
+ * Persiste whatsapp_instances via SELECT + UPDATE/INSERT para não depender de constraint UNIQUE(gabinete_id).
+ */
+async function saveInstanceRecord(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: { from: (table: string) => any },
+  gabineteId: string,
+  instanceName: string,
+  fields: Record<string, unknown>
+): Promise<{ data: SavedInstanceRow | null; error: string | null }> {
+  const selectCols = "id, instance_name, instance_token, status, phone_number, qr_code, pairing_code";
+
+  const { data: byGabinete } = await db
+    .from("whatsapp_instances")
+    .select("id")
+    .eq("gabinete_id", gabineteId)
+    .limit(1)
+    .maybeSingle();
+
+  const existingId = byGabinete?.id
+    ? (byGabinete.id as string)
+    : (
+        await db
+          .from("whatsapp_instances")
+          .select("id")
+          .eq("instance_name", instanceName)
+          .limit(1)
+          .maybeSingle()
+      ).data?.id;
+
+  if (existingId) {
+    const { data, error } = await db
+      .from("whatsapp_instances")
+      .update({
+        gabinete_id: gabineteId,
+        instance_name: instanceName,
+        ...fields,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existingId)
+      .select(selectCols)
+      .maybeSingle();
+    return { data: (data as SavedInstanceRow | null) ?? null, error: error?.message ?? null };
+  }
+
+  const { data, error } = await db
+    .from("whatsapp_instances")
+    .insert({
+      gabinete_id: gabineteId,
+      instance_name: instanceName,
+      ...fields,
+      updated_at: new Date().toISOString(),
+    })
+    .select(selectCols)
+    .maybeSingle();
+  return { data: (data as SavedInstanceRow | null) ?? null, error: error?.message ?? null };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const gabineteId = req.nextUrl.searchParams.get("gabineteId");
@@ -103,9 +171,10 @@ export async function GET(req: NextRequest) {
       .from("whatsapp_instances")
       .select("id, instance_name, instance_token, status, phone_number, qr_code, pairing_code")
       .eq("gabinete_id", gabineteId)
+      .limit(1)
       .maybeSingle();
 
-    let inst = initialInst;
+    let inst = initialInst as SavedInstanceRow | null;
 
     // Se a instância existir no servidor Go mas não estiver salva ainda no Supabase, sincroniza automaticamente
     if (!inst || !inst.instance_token) {
@@ -113,22 +182,12 @@ export async function GET(req: NextRequest) {
         const remoteList = await whatsappClient.fetchInstances(nodeConfig);
         const remote = remoteList.find((item) => item.name === expectedName);
         if (remote?.Auth?.token) {
-          const { data: upserted } = await db
-            .from("whatsapp_instances")
-            .upsert(
-              {
-                gabinete_id: gabineteId,
-                instance_name: remote.name,
-                instance_token: remote.Auth.token,
-                status: remote.connectionStatus === "online" ? "connected" : "disconnected",
-                phone_number: extractPhoneFromJid(remote.ownerJid) || null,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: "gabinete_id" }
-            )
-            .select("id, instance_name, instance_token, status, phone_number, qr_code, pairing_code")
-            .maybeSingle();
-          if (upserted) inst = upserted;
+          const saved = await saveInstanceRecord(db, gabineteId, remote.name, {
+            instance_token: remote.Auth.token,
+            status: remote.connectionStatus === "online" ? "connected" : "disconnected",
+            phone_number: extractPhoneFromJid(remote.ownerJid) || null,
+          });
+          if (saved.data) inst = saved.data;
         }
       } catch {
         // Ignora erro de listagem na recuperação silenciosa
@@ -201,6 +260,7 @@ export async function DELETE(req: NextRequest) {
       .from("whatsapp_instances")
       .select("id, instance_name, instance_token")
       .eq("gabinete_id", gabineteId)
+      .limit(1)
       .maybeSingle();
 
     if (inst?.instance_name && inst?.instance_token) {
@@ -251,10 +311,20 @@ export async function POST(req: NextRequest) {
       .from("whatsapp_instances")
       .select("instance_token")
       .eq("gabinete_id", gabineteId)
+      .limit(1)
       .maybeSingle();
 
     if (existingInst?.instance_token) {
       token = existingInst.instance_token;
+    }
+
+    // Verifica no servidor Go antes de tentar criar, evitando erro 500 de chave duplicada
+    if (!token) {
+      const remoteInstances = await whatsappClient.fetchInstances(selectedNode).catch(() => []);
+      const remoteMatch = remoteInstances.find((i) => i.name === instanceName);
+      if (remoteMatch?.Auth?.token) {
+        token = remoteMatch.Auth.token;
+      }
     }
 
     if (!token) {
@@ -263,7 +333,9 @@ export async function POST(req: NextRequest) {
         token = created.Auth?.token ?? created.instance?.token;
       } catch (err) {
         const msg = err instanceof Error ? err.message : "";
-        if (!msg.includes("(409)")) throw err;
+        if (!msg.includes("409") && !msg.includes("already exists") && !msg.includes("23505")) {
+          throw err;
+        }
         const instances = await whatsappClient.fetchInstances(selectedNode);
         const found = instances.find((i) => i.name === instanceName);
         token = found?.Auth?.token;
@@ -282,27 +354,24 @@ export async function POST(req: NextRequest) {
       console.warn("[WhatsApp Instance] Falha ao configurar webhook:", err);
     });
 
-    // Verifica estado atual; se já estiver conectado, retorna sem gerar novo QR
+    // Verifica estado atual; se já estiver conectado, retorna imediatamente sem tentar novo pareamento
     const currentState = await whatsappClient
       .getConnectionState(instanceName, token, selectedNode)
       .catch(() => null);
 
     if (currentState && mapApiConnectionToStatus(currentState) === "connected") {
       const phone = extractPhoneFromJid(currentState.ownerJid) || null;
-      await db.from("whatsapp_instances").upsert(
-        {
-          gabinete_id: gabineteId,
-          instance_name: instanceName,
-          instance_token: token,
-          status: "connected",
-          phone_number: phone,
-          qr_code: null,
-          pairing_code: null,
-          last_connected_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "gabinete_id" }
-      );
+      const saved = await saveInstanceRecord(db, gabineteId, instanceName, {
+        instance_token: token,
+        status: "connected",
+        phone_number: phone,
+        qr_code: null,
+        pairing_code: null,
+        last_connected_at: new Date().toISOString(),
+      });
+      if (saved.error) {
+        throw new Error(`Erro ao salvar instância WhatsApp no banco: ${saved.error}`);
+      }
 
       return NextResponse.json({
         instanceName,
@@ -313,12 +382,43 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const connectData = await whatsappClient.connectInstance(
-      instanceName,
-      token,
-      phoneNumber,
-      selectedNode
-    );
+    let connectData: Awaited<ReturnType<typeof whatsappClient.connectInstance>> = {};
+    try {
+      connectData = await whatsappClient.connectInstance(
+        instanceName,
+        token,
+        phoneNumber,
+        selectedNode
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message.toLowerCase() : "";
+      if (msg.includes("already connected") || msg.includes("connection in progress")) {
+        const recheck = await whatsappClient
+          .getConnectionState(instanceName, token, selectedNode)
+          .catch(() => null);
+        const isNowConnected = Boolean(recheck && mapApiConnectionToStatus(recheck) === "connected");
+        const phone = extractPhoneFromJid(recheck?.ownerJid) || null;
+        const saved = await saveInstanceRecord(db, gabineteId, instanceName, {
+          instance_token: token,
+          status: isNowConnected ? "connected" : "connecting",
+          ...(phone ? { phone_number: phone } : {}),
+          qr_code: null,
+          pairing_code: null,
+          ...(isNowConnected ? { last_connected_at: new Date().toISOString() } : {}),
+        });
+        if (saved.error) {
+          throw new Error(`Erro ao salvar instância WhatsApp no banco: ${saved.error}`);
+        }
+        return NextResponse.json({
+          instanceName,
+          status: isNowConnected ? "connected" : "connecting",
+          phoneNumber: phone,
+          qrCodeBase64: null,
+          pairingCode: null,
+        });
+      }
+      throw err;
+    }
 
     const alreadyConnected = Boolean(connectData.alreadyConnected);
     const qrCodeBase64 = alreadyConnected ? null : (connectData.base64 ?? null);
@@ -326,23 +426,17 @@ export async function POST(req: NextRequest) {
     const nextStatus = alreadyConnected ? "connected" : "connecting";
     const ownerPhone = extractPhoneFromJid(connectData.ownerJid) || null;
 
-    const { error: upsertErr } = await db.from("whatsapp_instances").upsert(
-      {
-        gabinete_id: gabineteId,
-        instance_name: instanceName,
-        instance_token: token,
-        status: nextStatus,
-        ...(ownerPhone ? { phone_number: ownerPhone } : {}),
-        qr_code: qrCodeBase64,
-        pairing_code: pairingCode,
-        ...(alreadyConnected ? { last_connected_at: new Date().toISOString() } : {}),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "gabinete_id" }
-    );
+    const saved = await saveInstanceRecord(db, gabineteId, instanceName, {
+      instance_token: token,
+      status: nextStatus,
+      ...(ownerPhone ? { phone_number: ownerPhone } : {}),
+      qr_code: qrCodeBase64,
+      pairing_code: pairingCode,
+      ...(alreadyConnected ? { last_connected_at: new Date().toISOString() } : {}),
+    });
 
-    if (upsertErr) {
-      throw new Error(`Erro ao salvar instância WhatsApp no banco: ${upsertErr.message}`);
+    if (saved.error) {
+      throw new Error(`Erro ao salvar instância WhatsApp no banco: ${saved.error}`);
     }
 
     return NextResponse.json({
