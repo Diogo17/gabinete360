@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
-import { whatsappClient, type WhatsAppNodeConfig } from "@/lib/whatsapp/client";
+import { whatsappClient, resolveActiveWhatsAppNode } from "@/lib/whatsapp/client";
 
 const UuidSchema = z.string().uuid();
 
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
 
     const { data: inst } = await supabase
       .from("whatsapp_instances")
-      .select("id, instance_name, instance_token, status, whatsapp_nodes(base_url, global_token)")
+      .select("id, instance_name, instance_token, status")
       .eq("gabinete_id", gabineteId)
       .maybeSingle();
 
@@ -71,12 +71,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ status: "disconnected" });
     }
 
-    const nodeData = Array.isArray(inst.whatsapp_nodes)
-      ? inst.whatsapp_nodes[0]
-      : inst.whatsapp_nodes;
-    const nodeConfig: WhatsAppNodeConfig | undefined = nodeData
-      ? { baseUrl: nodeData.base_url, globalToken: nodeData.global_token }
-      : undefined;
+    const nodeConfig = await resolveActiveWhatsAppNode(supabase);
 
     const stateRes = await whatsappClient.getConnectionState(
       inst.instance_name,
@@ -120,16 +115,14 @@ export async function DELETE(req: NextRequest) {
 
     const { data: inst } = await supabase
       .from("whatsapp_instances")
-      .select("id, instance_name, instance_token, whatsapp_nodes(base_url, global_token)")
+      .select("id, instance_name, instance_token")
       .eq("gabinete_id", gabineteId)
       .maybeSingle();
 
     if (inst?.instance_name && inst?.instance_token) {
-      const nodeData = Array.isArray(inst.whatsapp_nodes)
-        ? inst.whatsapp_nodes[0]
-        : inst.whatsapp_nodes;
-      const baseUrl = nodeData?.base_url || process.env.WHATSAPP_API_URL || "https://gabinete-360-whatsapp-b6xo7.sprites.app";
-      const globalToken = nodeData?.global_token || process.env.WHATSAPP_API_GLOBAL_TOKEN || "gab360_global_tok3n_2026_prod";
+      const nodeConfig = await resolveActiveWhatsAppNode(supabase);
+      const baseUrl = nodeConfig?.baseUrl || process.env.WHATSAPP_API_URL || "https://gabinete-360-whatsapp-b6xo7.sprites.app";
+      const globalToken = nodeConfig?.globalToken || process.env.WHATSAPP_API_GLOBAL_TOKEN || "gab360_global_tok3n_2026_prod";
 
       await fetch(`${baseUrl}/instance/logout/${encodeURIComponent(inst.instance_name)}`, {
         method: "DELETE",
@@ -169,23 +162,7 @@ export async function POST(req: NextRequest) {
     const webhookUrl = `${appUrl}/api/whatsapp/webhook`;
 
     const supabase = getAdminSupabase();
-    let selectedNode: WhatsAppNodeConfig | undefined;
-    let nodeId: string | null = null;
-
-    if (supabase) {
-      const { data: nodeRow } = await supabase
-        .from("whatsapp_nodes")
-        .select("id, base_url, global_token")
-        .eq("status", "active")
-        .order("active_instances", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (nodeRow) {
-        nodeId = nodeRow.id;
-        selectedNode = { baseUrl: nodeRow.base_url, globalToken: nodeRow.global_token };
-      }
-    }
+    const selectedNode = await resolveActiveWhatsAppNode(supabase);
 
     let token: string | undefined;
 
@@ -243,10 +220,9 @@ export async function POST(req: NextRequest) {
     const pairingCode = connectData.pairingCode ?? null;
 
     if (supabase) {
-      await supabase.from("whatsapp_instances").upsert(
+      const { error: upsertErr } = await supabase.from("whatsapp_instances").upsert(
         {
           gabinete_id: gabineteId,
-          node_id: nodeId,
           instance_name: instanceName,
           instance_token: token,
           status: "connecting",
@@ -256,6 +232,9 @@ export async function POST(req: NextRequest) {
         },
         { onConflict: "gabinete_id" }
       );
+      if (upsertErr) {
+        console.error("[WhatsApp Instance] Erro ao persistir instância no Supabase:", upsertErr.message);
+      }
     }
 
     return NextResponse.json({

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createClient } from "../../../../lib/supabase/server";
 
@@ -25,26 +26,40 @@ export async function POST(req: NextRequest) {
 
     const {
       organization_id,
+      citizen_name,
       neighborhood,
-      category,
       title,
       description,
     } = parsed.data;
 
-    const supabase = await createClient();
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabase =
+      url && serviceKey
+        ? createAdminClient(url, serviceKey)
+        : await createClient();
+
+    const { data: workspace } = await supabase
+      .from("workspaces")
+      .select("id")
+      .eq("organization_id", organization_id)
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+
     const protocol = `#AT-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const { data, error } = await supabase
       .from("demands")
       .insert({
         organization_id,
+        ...(workspace?.id ? { workspace_id: workspace.id } : {}),
         title,
-        description,
-        neighborhood: neighborhood || "Não informado",
-        category_key: category || "outros",
-        priority: "medium",
+        description: `[Portal Público · ${citizen_name}] ${description}`,
+        location_text: neighborhood || "Não informado",
+        priority: "normal",
         status: "received",
-        preferred_channel: "portal",
+        classification: "internal",
         protocol,
       })
       .select("id, protocol")

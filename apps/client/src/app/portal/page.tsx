@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -30,12 +30,45 @@ import {
   Globe,
 } from "lucide-react";
 
+interface PublicLegislativeItem {
+  id: string;
+  type: string;
+  number: string;
+  year: number;
+  title: string;
+  summary: string | null;
+  status: string;
+}
+
+interface PublicAgendaEvent {
+  id: string;
+  title: string;
+  starts_at: string;
+  location: string | null;
+  event_type: string | null;
+}
+
 export default function PortalPublicoPage() {
+  const [organizationId, setOrganizationId] = useState("11111111-1111-4111-8111-111111110001");
+  const [legislativeItems, setLegislativeItems] = useState<PublicLegislativeItem[]>([]);
+  const [agendaEvents, setAgendaEvents] = useState<PublicAgendaEvent[]>([]);
   const [formSent, setFormSent] = useState(false);
   const [protocol, setProtocol] = useState<string | null>(null);
   const [citizenName, setCitizenName] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    fetch("/api/public/portal")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        if (data.organizationId) setOrganizationId(data.organizationId);
+        if (Array.isArray(data.legislativeItems)) setLegislativeItems(data.legislativeItems);
+        if (Array.isArray(data.agendaEvents)) setAgendaEvents(data.agendaEvents);
+      })
+      .catch(() => null);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +78,7 @@ export default function PortalPublicoPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          organization_id: organizationId,
           citizen_name: citizenName,
           neighborhood,
           title: message.slice(0, 80),
@@ -160,38 +194,38 @@ export default function PortalPublicoPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-white border-[#E8EEEA] p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-xs font-bold text-[#176B52]">PL 084/2026</span>
-              <Badge variant="blue">Comissões</Badge>
+          {legislativeItems.length === 0 ? (
+            <div className="md:col-span-3 rounded-xl border border-[#E8EEEA] bg-white p-6 text-center text-xs text-[#77847F]">
+              Nenhuma proposição legislativa disponível para exibição pública no momento.
             </div>
-            <h3 className="font-bold text-sm text-[#172B27]">Wi-Fi Livre nos Bairros Periféricos</h3>
-            <p className="text-xs text-[#77847F] leading-relaxed">
-              Obriga a instalação de internet gratuita e estável em praças públicas e UBSs de regiões vulneráveis.
-            </p>
-          </Card>
-
-          <Card className="bg-white border-[#E8EEEA] p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-xs font-bold text-[#176B52]">REQ 312/2026</span>
-              <Badge variant="green">Aprovado</Badge>
-            </div>
-            <h3 className="font-bold text-sm text-[#172B27]">Auditoria nas Encostas da Zona Noroeste</h3>
-            <p className="text-xs text-[#77847F] leading-relaxed">
-              Requer prestação de contas sobre o cronograma de obras de contenção preventivas às chuvas de verão.
-            </p>
-          </Card>
-
-          <Card className="bg-white border-[#E8EEEA] p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-xs font-bold text-[#176B52]">IND 541/2026</span>
-              <Badge variant="amber">Em Trâmite</Badge>
-            </div>
-            <h3 className="font-bold text-sm text-[#172B27]">Sinalização e Faixa de Pedestres</h3>
-            <p className="text-xs text-[#77847F] leading-relaxed">
-              Indicação para a CET implantar redutores de velocidade na porta de duas escolas municipais.
-            </p>
-          </Card>
+          ) : (
+            legislativeItems.map((item) => (
+              <Card key={item.id} className="bg-white border-[#E8EEEA] p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold text-[#176B52]">
+                    {item.type === "indication"
+                      ? `IND ${item.number}`
+                      : item.type === "requirement"
+                      ? `REQ ${item.number}`
+                      : item.type === "motion"
+                      ? `MOÇÃO ${item.number}`
+                      : `PL ${item.number}`}
+                  </span>
+                  <Badge variant={item.status === "approved" ? "green" : "blue"}>
+                    {item.status === "approved"
+                      ? "Aprovado"
+                      : item.status === "in_review"
+                      ? "Em Trâmite"
+                      : "Protocolado"}
+                  </Badge>
+                </div>
+                <h3 className="font-bold text-sm text-[#172B27]">{item.title}</h3>
+                {item.summary && (
+                  <p className="text-xs text-[#77847F] leading-relaxed">{item.summary}</p>
+                )}
+              </Card>
+            ))
+          )}
         </div>
       </section>
 
@@ -208,38 +242,28 @@ export default function PortalPublicoPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-[#F6F8F5] rounded-xl border border-[#E8EEEA] space-y-2 text-xs">
-              <div className="flex items-center justify-between font-mono text-[#77847F]">
-                <span>24/11 · 15:00</span>
-                <Badge variant="blue">Audiência Pública</Badge>
+            {agendaEvents.length === 0 ? (
+              <div className="md:col-span-3 rounded-xl border border-[#E8EEEA] bg-[#F6F8F5] p-6 text-center text-xs text-[#77847F]">
+                Nenhum compromisso público agendado para os próximos dias.
               </div>
-              <div className="font-bold text-sm text-[#172B27]">Debate sobre o Plano Diretor</div>
-              <div className="text-[#77847F] flex items-center gap-1">
-                <MapPin className="h-3 w-3" /> Plenário da Câmara Municipal
-              </div>
-            </div>
-
-            <div className="p-4 bg-[#F6F8F5] rounded-xl border border-[#E8EEEA] space-y-2 text-xs">
-              <div className="flex items-center justify-between font-mono text-[#77847F]">
-                <span>26/11 · 09:30</span>
-                <Badge variant="amber">Visita de Fiscalização</Badge>
-              </div>
-              <div className="font-bold text-sm text-[#172B27]">Vistoria na Reforma da UPA</div>
-              <div className="text-[#77847F] flex items-center gap-1">
-                <MapPin className="h-3 w-3" /> Unidade Básica Zona Leste
-              </div>
-            </div>
-
-            <div className="p-4 bg-[#F6F8F5] rounded-xl border border-[#E8EEEA] space-y-2 text-xs">
-              <div className="flex items-center justify-between font-mono text-[#77847F]">
-                <span>28/11 · 14:00</span>
-                <Badge variant="green">Sessão Plenária</Badge>
-              </div>
-              <div className="font-bold text-sm text-[#172B27]">Votação de Projetos e Moções</div>
-              <div className="text-[#77847F] flex items-center gap-1">
-                <MapPin className="h-3 w-3" /> Câmara Municipal
-              </div>
-            </div>
+            ) : (
+              agendaEvents.map((evt) => (
+                <div key={evt.id} className="p-4 bg-[#F6F8F5] rounded-xl border border-[#E8EEEA] space-y-2 text-xs">
+                  <div className="flex items-center justify-between font-mono text-[#77847F]">
+                    <span>
+                      {new Date(evt.starts_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                      {" · "}
+                      {new Date(evt.starts_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <Badge variant="green">{evt.event_type || "Agenda Pública"}</Badge>
+                  </div>
+                  <div className="font-bold text-sm text-[#172B27]">{evt.title}</div>
+                  <div className="text-[#77847F] flex items-center gap-1">
+                    <MapPin className="h-3 w-3" /> {evt.location || "Câmara Municipal de Januária"}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -265,7 +289,7 @@ export default function PortalPublicoPage() {
               Solicitação Enviada com Sucesso!
             </h3>
             <p className="text-xs text-[#77847F]">
-              Seu atendimento foi encaminhado à equipe de triagem. Em breve você receberá atualizações em seu contato.
+              Seu atendimento foi encaminhado à equipe de triagem{protocol ? ` (Protocolo: ${protocol})` : ""}. Em breve você receberá atualizações em seu contato.
             </p>
             <Button variant="secondary" size="sm" onClick={() => setFormSent(false)}>
               Enviar Outra Mensagem
@@ -279,16 +303,16 @@ export default function PortalPublicoPage() {
                 <Input
                   value={citizenName}
                   onChange={(e) => setCitizenName(e.target.value)}
-                  placeholder="Ex.: Carlos Alberto"
+                  placeholder="Ex.: Maria Aparecida"
                   required
                 />
               </div>
               <div>
-                <label className="font-semibold block mb-1">Bairro / Cidade *</label>
+                <label className="font-semibold block mb-1">Bairro / Comunidade *</label>
                 <Input
                   value={neighborhood}
                   onChange={(e) => setNeighborhood(e.target.value)}
-                  placeholder="Ex.: Gonzaga · Santos"
+                  placeholder="Ex.: Barreiro do Alegre · Januária"
                   required
                 />
               </div>
@@ -306,7 +330,7 @@ export default function PortalPublicoPage() {
             </div>
 
             <Button type="submit" variant="primary" className="w-full font-bold">
-              <Send className="h-4 w-4 mr-1.5" /> Enviar ao Gabinete da Vereadora
+              <Send className="h-4 w-4 mr-1.5" /> Enviar ao Gabinete do Vereador
             </Button>
           </form>
         )}
@@ -314,8 +338,8 @@ export default function PortalPublicoPage() {
 
       {/* Rodapé Institucional */}
       <footer className="mt-auto bg-white border-t border-[#E8EEEA] py-6 px-4 text-center text-xs text-[#77847F] space-y-1">
-        <div>Gabinete Digital 360° by DM IA Studio · Versão de Homologação</div>
-        <div className="text-[10px]">Câmara Municipal de Santos · Praça Mauá, s/n · Centro Histórico</div>
+        <div>Gabinete Digital 360° by DM IA Studio · Portal de Transparência</div>
+        <div className="text-[10px]">Câmara Municipal de Januária · MG · Mandato Vereador Bill do Barreiro do Alegre (2025–2028)</div>
       </footer>
     </div>
   );

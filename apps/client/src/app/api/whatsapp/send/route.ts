@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
-import { whatsappClient, type WhatsAppNodeConfig } from "@/lib/whatsapp/client";
+import { whatsappClient, resolveActiveWhatsAppNode } from "@/lib/whatsapp/client";
 
 const SendMessageSchema = z.object({
   gabineteId: z.string().uuid(),
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     const { data: instanceRow, error: instErr } = await supabase
       .from("whatsapp_instances")
-      .select("id, instance_name, instance_token, whatsapp_nodes(base_url, global_token)")
+      .select("id, instance_name, instance_token")
       .eq("gabinete_id", gabineteId)
       .maybeSingle();
 
@@ -70,13 +70,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Instância WhatsApp não encontrada para este gabinete." }, { status: 404 });
     }
 
-    const nodeData = Array.isArray(instanceRow.whatsapp_nodes)
-      ? instanceRow.whatsapp_nodes[0]
-      : instanceRow.whatsapp_nodes;
-
-    const nodeConfig: WhatsAppNodeConfig | undefined = nodeData
-      ? { baseUrl: nodeData.base_url, globalToken: nodeData.global_token }
-      : undefined;
+    const nodeConfig = await resolveActiveWhatsAppNode(supabase);
 
     const antiBanDelayMs = Math.floor(2500 + Math.random() * 3000);
 

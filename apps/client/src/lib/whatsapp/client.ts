@@ -12,6 +12,35 @@ const DEFAULT_NODE: WhatsAppNodeConfig = {
   globalToken: process.env.WHATSAPP_API_GLOBAL_TOKEN || "",
 };
 
+/**
+ * Resolve o nó WhatsApp ativo a partir de public.whatsapp_nodes, com fallback para variáveis de ambiente.
+ * Evita dependência de FK node_id em whatsapp_instances.
+ */
+export async function resolveActiveWhatsAppNode(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: { from: (table: string) => any } | null
+): Promise<WhatsAppNodeConfig | undefined> {
+  if (supabase) {
+    const { data: nodeRow } = await supabase
+      .from("whatsapp_nodes")
+      .select("base_url, global_token")
+      .eq("status", "active")
+      .order("active_instances", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (nodeRow?.base_url && nodeRow?.global_token) {
+      return { baseUrl: nodeRow.base_url, globalToken: nodeRow.global_token };
+    }
+  }
+
+  if (DEFAULT_NODE.baseUrl && DEFAULT_NODE.globalToken) {
+    return DEFAULT_NODE;
+  }
+
+  return undefined;
+}
+
 interface RequestOptions extends RequestInit {
   instanceToken?: string;
   node?: WhatsAppNodeConfig;
@@ -22,6 +51,10 @@ async function whatsappFetch<T = unknown>(
   options: RequestOptions = {}
 ): Promise<T> {
   const { instanceToken, node = DEFAULT_NODE, headers, ...rest } = options;
+
+  if (!node.baseUrl) {
+    throw new Error("Servidor WhatsApp não configurado (base_url ausente).");
+  }
 
   const authHeaders: Record<string, string> = {
     "Content-Type": "application/json",

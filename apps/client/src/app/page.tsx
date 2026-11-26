@@ -70,7 +70,7 @@ interface DashboardAgendaEvent {
 
 export default function ClientDashboardPage() {
   const router = useRouter();
-  const { organization, profile } = useOrganization();
+  const { organization, profile, isLoading: isOrgLoading } = useOrganization();
   const [filter, setFilter] = useState("todas");
   const [uiState, setUiState] = useState<"normal" | "loading" | "empty" | "error">("loading");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -100,8 +100,15 @@ export default function ClientDashboardPage() {
   };
 
   const loadDashboardData = useCallback(async () => {
+    if (isOrgLoading) {
+      setUiState("loading");
+      return;
+    }
+
     if (!organization?.id) {
-      setUiState("empty");
+      setDemandsList([]);
+      setAgendaEvents([]);
+      setUiState("normal");
       return;
     }
 
@@ -142,11 +149,11 @@ export default function ClientDashboardPage() {
 
       setDemandsList(mappedDemands);
       setAgendaEvents((agendaRes.data || []) as DashboardAgendaEvent[]);
-      setUiState(mappedDemands.length === 0 ? "empty" : "normal");
+      setUiState("normal");
     } catch {
       setUiState("error");
     }
-  }, [organization?.id]);
+  }, [organization?.id, isOrgLoading]);
 
   useEffect(() => {
     loadDashboardData();
@@ -280,7 +287,7 @@ export default function ClientDashboardPage() {
               title="Falha ao carregar indicadores do gabinete"
               message="Ocorreu um erro ao conectar com o serviço de atendimentos. Tente atualizar a página."
               retryLabel="Tentar novamente"
-              onRetry={() => setUiState("normal")}
+              onRetry={() => loadDashboardData()}
             />
           </div>
         )}
@@ -371,7 +378,14 @@ export default function ClientDashboardPage() {
                         </Tr>
                       </Thead>
                       <Tbody>
-                        {filteredDemands.slice(0, 5).map((demand) => (
+                        {filteredDemands.length === 0 ? (
+                          <Tr>
+                            <Td colSpan={4} className="py-8 text-center text-xs text-muted">
+                              Nenhum atendimento encontrado para o filtro selecionado.
+                            </Td>
+                          </Tr>
+                        ) : (
+                          filteredDemands.slice(0, 5).map((demand) => (
                           <Tr
                             key={demand.id}
                             className="hover:bg-paper/50 cursor-pointer transition-colors"
@@ -427,7 +441,8 @@ export default function ClientDashboardPage() {
                               </span>
                             </Td>
                           </Tr>
-                        ))}
+                        ))
+                        )}
                       </Tbody>
                     </Table>
                   </div>
