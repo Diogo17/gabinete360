@@ -69,10 +69,17 @@ export async function POST(req: NextRequest) {
       const messageId = key?.id as string | undefined;
       const pushName = (data.pushName as string | undefined) || null;
       const msgObj = data.message as Record<string, unknown> | undefined;
+      const imageMsg = msgObj?.imageMessage as Record<string, unknown> | undefined;
+      const audioMsg = msgObj?.audioMessage as Record<string, unknown> | undefined;
+      const docMsg = msgObj?.documentMessage as Record<string, unknown> | undefined;
+
+      const msgType = imageMsg ? "image" : audioMsg ? "audio" : docMsg ? "document" : "text";
       const textContent =
         (msgObj?.conversation as string | undefined) ||
         ((msgObj?.extendedTextMessage as Record<string, unknown> | undefined)?.text as string | undefined) ||
-        "";
+        (imageMsg?.caption as string | undefined) ||
+        (docMsg?.caption as string | undefined) ||
+        (msgType !== "text" ? `[${msgType}]` : "");
 
       if (remoteJid && !remoteJid.endsWith("@g.us")) {
         const phone = remoteJid.replace(/@s\.whatsapp\.net$/, "");
@@ -98,7 +105,7 @@ export async function POST(req: NextRequest) {
             contact_id: contact.id,
             message_id: messageId ?? null,
             direction: fromMe ? "outbound" : "inbound",
-            type: "text",
+            type: msgType,
             content: textContent,
             status: fromMe ? "sent" : "delivered",
           });

@@ -6,7 +6,9 @@ import { whatsappClient, type WhatsAppNodeConfig } from "@/lib/whatsapp/client";
 const SendMessageSchema = z.object({
   gabineteId: z.string().uuid(),
   number: z.string().min(8),
-  text: z.string().min(1).max(4096),
+  text: z.string().max(4096).optional(),
+  mediaUrl: z.string().url().optional(),
+  mediaType: z.enum(["image", "audio", "document"]).optional(),
 });
 
 function getAdminSupabase() {
@@ -28,7 +30,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { gabineteId, number, text } = parsed.data;
+    const { gabineteId, number, text, mediaUrl, mediaType } = parsed.data;
     const supabase = getAdminSupabase();
     if (!supabase) {
       return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY não configurada" }, { status: 500 });
@@ -54,12 +56,20 @@ export async function POST(req: NextRequest) {
 
     const antiBanDelayMs = Math.floor(2500 + Math.random() * 3000);
 
-    const result = await whatsappClient.sendText(
-      instanceRow.instance_name,
-      instanceRow.instance_token,
-      { number, text, delayMs: antiBanDelayMs },
-      nodeConfig
-    );
+    const result =
+      mediaUrl && mediaType
+        ? await whatsappClient.sendMedia(
+            instanceRow.instance_name,
+            instanceRow.instance_token,
+            { number, mediatype: mediaType, media: mediaUrl, caption: text, delayMs: antiBanDelayMs },
+            nodeConfig
+          )
+        : await whatsappClient.sendText(
+            instanceRow.instance_name,
+            instanceRow.instance_token,
+            { number, text: text ?? "", delayMs: antiBanDelayMs },
+            nodeConfig
+          );
 
     return NextResponse.json({
       ok: true,

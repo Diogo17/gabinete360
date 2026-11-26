@@ -122,4 +122,36 @@ export const whatsappClient = {
       }
     );
   },
+
+  sendMedia(
+    instanceName: string,
+    instanceToken: string,
+    params: {
+      number: string;
+      mediatype: "image" | "audio" | "document";
+      media: string;
+      caption?: string;
+      delayMs?: number;
+    },
+    node?: WhatsAppNodeConfig
+  ) {
+    return whatsappFetch<{ key: { id: string } }>(
+      `/message/sendMedia/${encodeURIComponent(instanceName)}`,
+      {
+        method: "POST",
+        instanceToken,
+        node,
+        body: JSON.stringify({
+          number: params.number,
+          mediatype: params.mediatype,
+          media: params.media,
+          ...(params.caption ? { caption: params.caption } : {}),
+          options: {
+            delay: params.delayMs ?? 2500,
+            presence: params.mediatype === "audio" ? "recording" : "composing",
+          },
+        }),
+      }
+    );
+  },
 };
