@@ -234,7 +234,7 @@ const INITIAL_ORGS: OrganizationTreeItem[] = [
 ];
 
 export default function OrganizationsManagementPage() {
-  const [orgs] = useState<OrganizationTreeItem[]>(INITIAL_ORGS);
+  const [orgs] = useState<OrganizationTreeItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [kindFilter, setKindFilter] = useState<"all" | "chamber" | "individual">("all");
   const [expandedOrgs, setExpandedOrgs] = useState<Record<string, boolean>>({

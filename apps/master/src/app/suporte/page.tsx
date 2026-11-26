@@ -86,7 +86,7 @@ const INITIAL_JIT_REQUESTS: EnrichedJITRequest[] = [
 ];
 
 export default function SupportJITPage() {
-  const [requests, setRequests] = useState<EnrichedJITRequest[]>(INITIAL_JIT_REQUESTS);
+  const [requests, setRequests] = useState<EnrichedJITRequest[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRequestDetails, setSelectedRequestDetails] = useState<EnrichedJITRequest | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);

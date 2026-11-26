@@ -274,7 +274,7 @@ const PIPELINE_STAGES = [
 ];
 
 export default function ProvisioningPipelinePage() {
-  const [jobs, setJobs] = useState<EnrichedProvisioningJob[]>(INITIAL_JOBS);
+  const [jobs, setJobs] = useState<EnrichedProvisioningJob[]>([]);
   const [selectedJob, setSelectedJob] = useState<EnrichedProvisioningJob | null>(null);
   const [isRetrying, setIsRetrying] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<string>("all");

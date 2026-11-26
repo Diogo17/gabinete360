@@ -165,7 +165,7 @@ const ROLES_INFO = [
 ];
 
 export default function AdminsManagementPage() {
-  const [admins, setAdmins] = useState<ExtendedAdmin[]>(INITIAL_ADMINS);
+  const [admins, setAdmins] = useState<ExtendedAdmin[]>([]);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
   const [selectedAdminHistory, setSelectedAdminHistory] = useState<ExtendedAdmin | null>(null);

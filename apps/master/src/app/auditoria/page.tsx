@@ -166,7 +166,7 @@ const INITIAL_AUDIT_LOGS: PlatformAuditEvent[] = [
 ];
 
 export default function AdministrativeAuditPage() {
-  const [logs] = useState<PlatformAuditEvent[]>(INITIAL_AUDIT_LOGS);
+  const [logs] = useState<PlatformAuditEvent[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [resultFilter, setResultFilter] = useState<string>("all");
   const [selectedLog, setSelectedLog] = useState<PlatformAuditEvent | null>(null);

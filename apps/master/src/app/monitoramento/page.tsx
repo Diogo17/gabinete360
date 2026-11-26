@@ -127,7 +127,7 @@ const RECENT_INCIDENTS: PlatformIncident[] = [
 ];
 
 export default function MonitoringHealthPage() {
-  const [services, setServices] = useState<ServiceHealthCard[]>(INITIAL_SERVICES);
+  const [services, setServices] = useState<ServiceHealthCard[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastHeartbeat, setLastHeartbeat] = useState<string>("Agora há pouco");
 

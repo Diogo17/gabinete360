@@ -205,7 +205,7 @@ const INITIAL_CLIENTS: PlatformTenant[] = [
 ];
 
 export default function ClientsManagementPage() {
-  const [clients, setClients] = useState<PlatformTenant[]>(INITIAL_CLIENTS);
+  const [clients, setClients] = useState<PlatformTenant[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
