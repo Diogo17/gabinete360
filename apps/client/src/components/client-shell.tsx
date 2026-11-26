@@ -212,7 +212,7 @@ export function ClientShell({
       sidebarFooter={
         <div className="rounded-md bg-paper border border-line p-2 text-center text-[10px] text-muted">
           <span className="font-semibold text-green">Gabinete 360°</span> v1.0 MVP
-          <div className="text-[9px] text-muted/80">Ambiente de Demonstração</div>
+          <div className="text-[9px] text-muted/80">Ambiente de Produção</div>
         </div>
       }
     >

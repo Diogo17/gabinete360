@@ -57,7 +57,7 @@ export function OrganizationProvider({
         // Fetch active memberships with organization data
         const { data: memberships, error: memErr } = await supabase
           .from("memberships")
-          .select("*, organization:organizations(*), profile:profiles(*)")
+          .select("*, organization:organizations(*)")
           .eq("user_id", user.id)
           .eq("status", "active");
 
@@ -65,6 +65,13 @@ export function OrganizationProvider({
           setIsLoading(false);
           return;
         }
+
+        // Fetch user profile separately (memberships.user_id -> auth.users)
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
 
         // Set available organizations from memberships
         const orgs = memberships
@@ -84,11 +91,11 @@ export function OrganizationProvider({
             id: targetMembership.id,
             organization_id: targetMembership.organization_id,
             user_id: targetMembership.user_id,
-            role: targetMembership.role,
+            role: targetMembership.role || "parliamentarian",
             status: targetMembership.status,
             joined_at: targetMembership.joined_at,
             created_at: targetMembership.created_at,
-            profile: targetMembership.profile || null,
+            profile: profileData || null,
           });
         }
       } catch (err) {
@@ -113,7 +120,7 @@ export function OrganizationProvider({
 
       const { data: mem } = await supabase
         .from("memberships")
-        .select("*, profile:profiles(*)")
+        .select("*")
         .eq("user_id", user.id)
         .eq("organization_id", targetOrg.id)
         .eq("status", "active")
