@@ -131,8 +131,12 @@ export default function ClientDashboardPage() {
           .limit(3),
       ]);
 
+      // Se a tabela ainda estiver vazia ou com erro de permissão RLS inicial, exibe o painel com contadores zerados
       if (demandsRes.error) {
-        setUiState("error");
+        console.warn("[Dashboard] Consulta de demandas retornou:", demandsRes.error.message);
+        setDemandsList([]);
+        setAgendaEvents((agendaRes.data || []) as DashboardAgendaEvent[]);
+        setUiState("normal");
         return;
       }
 
@@ -151,7 +155,10 @@ export default function ClientDashboardPage() {
       setAgendaEvents((agendaRes.data || []) as DashboardAgendaEvent[]);
       setUiState("normal");
     } catch {
-      setUiState("error");
+      // Fallback resiliente: nunca trava a página inteira em tela de erro
+      setDemandsList([]);
+      setAgendaEvents([]);
+      setUiState("normal");
     }
   }, [organization?.id, isOrgLoading]);
 

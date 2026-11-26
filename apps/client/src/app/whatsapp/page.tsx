@@ -280,7 +280,14 @@ export default function WhatsAppPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Falha ao conectar");
+      if (!res.ok) {
+        // Se retornar 409 ou erro de conexão existente, consulta imediatamente o estado da instância
+        if (res.status === 409 || data?.error?.includes("409") || data?.error?.includes("INSTANCE_ALREADY_CONNECTED")) {
+          await checkStatus(gabineteId, true);
+          return;
+        }
+        throw new Error(data.error || "Falha ao conectar");
+      }
       if (data.status === "connected") {
         setStatus("connected");
         setConnectedPhone(data.phoneNumber || null);

@@ -392,32 +392,39 @@ export async function POST(req: NextRequest) {
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message.toLowerCase() : "";
-      if (msg.includes("already connected") || msg.includes("connection in progress")) {
+      if (
+        msg.includes("409") ||
+        msg.includes("already connected") ||
+        msg.includes("connection in progress") ||
+        msg.includes("conflito")
+      ) {
+        // Consulta o estado real e atualiza
         const recheck = await whatsappClient
           .getConnectionState(instanceName, token, selectedNode)
           .catch(() => null);
         const isNowConnected = Boolean(recheck && mapApiConnectionToStatus(recheck) === "connected");
         const phone = extractPhoneFromJid(recheck?.ownerJid) || null;
-        const saved = await saveInstanceRecord(db, gabineteId, instanceName, {
-          instance_token: token,
-          status: isNowConnected ? "connected" : "connecting",
-          ...(phone ? { phone_number: phone } : {}),
-          qr_code: null,
-          pairing_code: null,
-          ...(isNowConnected ? { last_connected_at: new Date().toISOString() } : {}),
-        });
-        if (saved.error) {
-          throw new Error(`Erro ao salvar instância WhatsApp no banco: ${saved.error}`);
+
+        // Se não estiver conectado, tenta resetar a sessão anterior e gerar novo QR
+        if (!isNowConnected) {
+          await whatsappClient.logoutInstance(instanceName, token, selectedNode).catch(() => null);
+          try {
+            connectData = await whatsappClient.connectInstance(
+              instanceName,
+              token,
+              phoneNumber,
+              selectedNode
+            );
+          } catch {
+            // Se ainda assim persistir em pairing, retorna estado connecting sem erro
+            connectData = { connectionStatus: "connecting" };
+          }
+        } else {
+          connectData = { alreadyConnected: true, ownerJid: recheck?.ownerJid || undefined };
         }
-        return NextResponse.json({
-          instanceName,
-          status: isNowConnected ? "connected" : "connecting",
-          phoneNumber: phone,
-          qrCodeBase64: null,
-          pairingCode: null,
-        });
+      } else {
+        throw err;
       }
-      throw err;
     }
 
     const alreadyConnected = Boolean(connectData.alreadyConnected);
