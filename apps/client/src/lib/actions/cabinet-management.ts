@@ -3,6 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
 
+async function requireAuthenticatedUser(supabase: any) {
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+  if (error || !user) {
+    return null;
+  }
+  return user;
+}
+
 /**
  * Atualiza foto (avatar_url), descrição e link de agenda do gabinete.
  */
@@ -11,6 +22,9 @@ export async function updateCabinetProfile(
   data: { avatar_url?: string; description?: string; agenda_sync_url?: string }
 ) {
   const supabase = await createClient();
+  if (!(await requireAuthenticatedUser(supabase))) {
+    return { success: false, error: "Usuário não autenticado." };
+  }
   const { error } = await supabase
     .from("organizations")
     .update({
@@ -41,6 +55,9 @@ export async function upsertLegislativeItem(
   }
 ) {
   const supabase = await createClient();
+  if (!(await requireAuthenticatedUser(supabase))) {
+    return { success: false, error: "Usuário não autenticado." };
+  }
   const payload = {
     organization_id: organizationId,
     kind: item.kind,
@@ -62,6 +79,9 @@ export async function upsertLegislativeItem(
 
 export async function deleteLegislativeItem(organizationId: string, itemId: string) {
   const supabase = await createClient();
+  if (!(await requireAuthenticatedUser(supabase))) {
+    return { success: false, error: "Usuário não autenticado." };
+  }
   const { error } = await supabase
     .from("legislative_items")
     .delete()
@@ -111,6 +131,9 @@ export async function removeTeamMember(organizationId: string, membershipId: str
  */
 export async function deleteAgendaEvent(organizationId: string, eventId: string) {
   const supabase = await createClient();
+  if (!(await requireAuthenticatedUser(supabase))) {
+    return { success: false, error: "Usuário não autenticado." };
+  }
   const { error } = await supabase
     .from("agenda_events")
     .delete()

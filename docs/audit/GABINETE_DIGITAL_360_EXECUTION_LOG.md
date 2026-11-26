@@ -92,3 +92,124 @@ Passou.
 
 ### Status
 Concluído
+
+---
+
+## [CICLO-3] — Qualidade e Infraestrutura de Testes (`QA-001`, `QA-002`)
+
+### Problema
+1. `QA-001`: `apps/client/package.json` e `apps/master/package.json` não definiam script `"lint"`.
+2. `QA-002`: Ausência de testes de regressão para as correções de segurança `SEC-001`..`SEC-005`.
+
+### Solução
+- Adicionado `"lint": "next lint"` em `apps/client/package.json` e `apps/master/package.json`.
+- Criado `tests/security/security-regression.test.ts` validando as correções `SEC-001`..`SEC-005`.
+
+### Arquivos modificados
+- `apps/client/package.json`
+- `apps/master/package.json`
+- `tests/security/security-regression.test.ts` (criado)
+- `docs/audit/GABINETE_DIGITAL_360_BACKLOG.md`
+
+### Testes executados
+- `node tests/security/security-regression.test.ts` — Passou
+- `tsc --noEmit -p apps/client/tsconfig.json` — Passou
+- `tsc --noEmit -p apps/master/tsconfig.json` — Passou
+- `node tests/e2e/harness/runner.ts` — Passou (102/102 contratos)
+
+### Resultado
+Passou.
+
+### Status
+Concluído
+
+---
+
+## [CICLO-4] — Core e CRM (`apps/client/src/lib/actions/demands.ts`)
+
+### Problema
+`resolveUserTenant` em `demands.ts` fazia fallback para `PILOT_ORG_ID` quando o usuário autenticado não possuía `membership` ativo.
+
+### Solução
+Alterado `resolveUserTenant` para retornar `null` quando não há `userId` ou `membership` ativo, bloqueando a criação de demanda com erro explícito `"Usuário sem vínculo ativo com nenhuma organização."`.
+
+### Arquivos modificados
+- `apps/client/src/lib/actions/demands.ts`
+
+### Testes executados
+- `tsc --noEmit -p apps/client/tsconfig.json` — Passou
+- `node tests/security/security-regression.test.ts` — Passou
+- `node tests/e2e/harness/runner.ts` — Passou (102/102 contratos)
+
+### Resultado
+Passou.
+
+### Status
+Concluído
+
+---
+
+## [CICLOS 5–9] — Legislativo, Agenda, WhatsApp/IA, Transparência e Master
+
+### Resumo
+- **Ciclos 5 e 6 (Legislativo e Agenda):** Adicionada verificação explícita de sessão (`requireAuthenticatedUser`) nas Server Actions `updateCabinetProfile`, `upsertLegislativeItem`, `deleteLegislativeItem` e `deleteAgendaEvent` em `apps/client/src/lib/actions/cabinet-management.ts`.
+- **Ciclos 7, 8 e 9 (WhatsApp/IA, Transparência e Master):** Validados `requireMasterAdmin()` em `apps/master/src/lib/actions/connections.ts` e as proteções implementadas nos Ciclos 1 e 2.
+
+### Arquivos modificados
+- `apps/client/src/lib/actions/cabinet-management.ts`
+
+### Testes executados
+- `tsc --noEmit -p apps/client/tsconfig.json` — Passou
+- `tsc --noEmit -p apps/master/tsconfig.json` — Passou
+- `node tests/security/security-regression.test.ts` — Passou (`SEC-001..SEC-005`)
+- `node tests/e2e/harness/runner.ts` — Passou (`102/102` contratos, `620` assertions)
+
+### Resultado
+Passou.
+
+### Status
+Concluído
+
+---
+
+## [FASE-10] — Gabinete Copilot & Smart Briefing (`/api/ia/briefing`)
+
+### Solução
+Implementado o endpoint `POST /api/ia/briefing` em `apps/client/src/app/api/ia/briefing/route.ts` com autenticação Supabase, validação Zod (`BriefingSchema`), verificação de `membership` ativo, consultas isoladas por `organization_id` (`demands`, `agenda_events`, `legislative_items`) e síntese opcional via Gemini 2.5 Flash.
+
+### Arquivos modificados
+- `apps/client/src/app/api/ia/briefing/route.ts` (criado)
+
+### Testes executados
+- `tsc --noEmit -p apps/client/tsconfig.json` — Passou
+- `node tests/security/security-regression.test.ts` — Passou
+- `node tests/e2e/harness/runner.ts` — Passou (102/102 contratos)
+
+### Resultado
+Passou.
+
+### Status
+Concluído
+
+---
+
+## [FASE-10-EXTRA] — Busca Global, CRM 360°, Inteligência Territorial e Meeting Assistant
+
+### Solução
+Implementados 4 novos endpoints permission-aware e isolados por `organization_id`:
+- `GET /api/search` (`apps/client/src/app/api/search/route.ts`)
+- `GET /api/crm/citizen/[id]` (`apps/client/src/app/api/crm/citizen/[id]/route.ts`)
+- `GET /api/territorial/summary` (`apps/client/src/app/api/territorial/summary/route.ts`)
+- `POST /api/ia/meeting` (`apps/client/src/app/api/ia/meeting/route.ts`)
+
+### Testes executados
+- `tsc --noEmit -p apps/client/tsconfig.json` — Passou
+- `tsc --noEmit -p apps/master/tsconfig.json` — Passou
+- `node tests/security/security-regression.test.ts` — Passou
+- `node tests/e2e/harness/runner.ts` — Passou (102/102 contratos)
+
+### Resultado
+Passou.
+
+### Status
+Concluído

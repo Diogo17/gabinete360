@@ -28,10 +28,7 @@ const PILOT_WORKSPACE_ID = "c0000000-0000-0000-0000-000000000001";
  */
 async function resolveUserTenant(supabase: any, userId: string | undefined) {
   if (!userId) {
-    return {
-      organizationId: PILOT_ORG_ID,
-      workspaceId: PILOT_WORKSPACE_ID,
-    };
+    return null;
   }
 
   const { data: membership, error } = await supabase
@@ -44,10 +41,7 @@ async function resolveUserTenant(supabase: any, userId: string | undefined) {
     .maybeSingle();
 
   if (error || !membership?.organization_id) {
-    return {
-      organizationId: PILOT_ORG_ID,
-      workspaceId: PILOT_WORKSPACE_ID,
-    };
+    return null;
   }
 
   const orgId = membership.organization_id;
@@ -83,7 +77,11 @@ export async function createDemandAction(input: DemandInput): Promise<DemandActi
     }
 
     // 1. Deriva o tenant (organização e workspace) a partir do usuário autenticado
-    const { organizationId, workspaceId } = await resolveUserTenant(supabase, user?.id);
+    const tenant = await resolveUserTenant(supabase, user?.id);
+    if (!tenant) {
+      return { success: false, error: "Usuário sem vínculo ativo com nenhuma organização." };
+    }
+    const { organizationId, workspaceId } = tenant;
 
     // 2. Tenta executar via RPC transacional atômica (função register_demand_transactional)
     const { data: rpcData, error: rpcError } = await supabase.rpc("register_demand_transactional", {
@@ -168,7 +166,11 @@ export async function getDemandsAction() {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const { organizationId } = await resolveUserTenant(supabase, user?.id);
+    const tenant = await resolveUserTenant(supabase, user?.id);
+    if (!tenant) {
+      return { success: false, error: "Usuário sem vínculo ativo com nenhuma organização.", data: [] };
+    }
+    const { organizationId } = tenant;
 
     const { data, error } = await supabase
       .from("demands")
