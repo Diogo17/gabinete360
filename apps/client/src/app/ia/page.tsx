@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { ClientShell } from "../../components/client-shell";
+import { useOrganization } from "../../lib/tenant/context";
 import {
   Card,
   CardHeader,
@@ -15,67 +16,132 @@ import {
   Sparkles,
   Bot,
   FileText,
-  TrendingUp,
-  ShieldAlert,
-  Send,
-  CheckCircle,
   Copy,
+  CheckCircle,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 
-export default function IAPage() {
-  const [demandText, setDemandText] = useState(
-    "Boa tarde, moro na Rua das Flores no Jardim das Flores e faz três semanas que os postes da esquina estão apagados. Já tivemos duas tentativas de assalto aqui perto por causa da escuridão."
-  );
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<any>({
-    category: "Iluminação Pública / Segurança Comunitária",
-    urgency: "Alta (Relato de risco à segurança pública)",
-    summary: "Munícipe solicita reparo emergencial em iluminação pública na Rua das Flores devido a riscos de assalto.",
-    suggestedResponse:
-      "Olá! Agradecemos o seu contato. O gabinete da Vereadora Mariana Costa já registrou sua demanda com o protocolo de urgência #AT-0249. Estamos encaminhando imediatamente um ofício cobrando a equipe de manutenção do Departamento de Iluminação Pública. Manteremos você informado!",
-    suggestedAction: "Elaborar Requerimento de Urgência à CPFL / Secretaria de Serviços Públicos.",
-  });
+/* ------------------------------------------------------------------ */
+/*  Tipos                                                              */
+/* ------------------------------------------------------------------ */
+interface TriageResult {
+  category: string;
+  urgency: string;
+  summary: string;
+  suggestedResponse: string;
+  suggestedAction: string;
+}
 
-  const handleAnalyze = async () => {
+type AnalysisStatus = "idle" | "loading" | "success" | "error";
+
+/* ------------------------------------------------------------------ */
+/*  Componente                                                         */
+/* ------------------------------------------------------------------ */
+export default function IAPage() {
+  const { organization } = useOrganization();
+  const [demandText, setDemandText] = useState("");
+  const [status, setStatus] = useState<AnalysisStatus>("idle");
+  const [analysisResult, setAnalysisResult] = useState<TriageResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  /* ---- Executar Triagem ---- */
+  const handleAnalyze = useCallback(async () => {
     if (!demandText.trim()) return;
-    setIsAnalyzing(true);
+    setStatus("loading");
+    setErrorMessage("");
+    setCopied(false);
+
     try {
       const res = await fetch("/api/ia/assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(organization?.id ? { organizationId: organization.id } : {}),
           action: "triage",
           content: demandText,
         }),
       });
       const data = await res.json();
-      if (res.ok && data.result) {
-        setAnalysisResult({
-          category: "Classificação Assistiva (Gemini)",
-          urgency: "Analisado em tempo real",
-          summary: data.result,
-          suggestedResponse: data.result,
-          suggestedAction: "Revisar e encaminhar ao assessor responsável.",
-        });
+
+      if (res.ok && data.success) {
+        if (data.structured && typeof data.result === "object") {
+          setAnalysisResult({
+            category: data.result.category || "Não classificado",
+            urgency: data.result.urgency || "Não avaliado",
+            summary: data.result.summary || "Sem resumo disponível.",
+            suggestedResponse: data.result.suggestedResponse || "",
+            suggestedAction: data.result.suggestedAction || "",
+          });
+        } else {
+          // Fallback: texto bruto
+          setAnalysisResult({
+            category: "Classificação Assistiva (Gemini)",
+            urgency: "Analisado em tempo real",
+            summary: typeof data.result === "string" ? data.result : JSON.stringify(data.result),
+            suggestedResponse: "",
+            suggestedAction: "Revisar e encaminhar ao assessor responsável.",
+          });
+        }
+        setStatus("success");
       } else {
-        setAnalysisResult({
-          category: "Erro na análise",
-          urgency: "Indisponível",
-          summary: data.error || "Não foi possível conectar à API Gemini.",
-          suggestedResponse: "",
-          suggestedAction: "Verifique a variável GEMINI_API_KEY.",
-        });
+        setErrorMessage(data.error || "Não foi possível conectar à API Gemini.");
+        setStatus("error");
+        setAnalysisResult(null);
       }
     } catch {
-      setAnalysisResult({
-        category: "Erro de rede",
-        urgency: "Indisponível",
-        summary: "Falha ao chamar o endpoint /api/ia/assist.",
-        suggestedResponse: "",
-        suggestedAction: "Tente novamente.",
-      });
-    } finally {
-      setIsAnalyzing(false);
+      setErrorMessage("Falha de conexão com o servidor. Verifique sua rede e tente novamente.");
+      setStatus("error");
+      setAnalysisResult(null);
+    }
+  }, [demandText, organization?.id]);
+
+  /* ---- Copiar para WhatsApp ---- */
+  const handleCopy = useCallback(async () => {
+    if (!analysisResult?.suggestedResponse) return;
+    try {
+      await navigator.clipboard.writeText(analysisResult.suggestedResponse);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // Fallback para navegadores que bloqueiam clipboard
+      const textArea = document.createElement("textarea");
+      textArea.value = analysisResult.suggestedResponse;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  }, [analysisResult?.suggestedResponse]);
+
+  const getUrgencyClass = (urgency: string) => {
+    const normalized = urgency.toLowerCase();
+    if (normalized.includes("urgente") || normalized.includes("alta")) {
+      return "text-red-700";
+    }
+    if (normalized.includes("normal") || normalized.includes("média") || normalized.includes("media")) {
+      return "text-amber-700";
+    }
+    if (normalized.includes("baixa")) {
+      return "text-green";
+    }
+    return "text-ink";
+  };
+
+  /* ---- Badge dinâmico ---- */
+  const statusBadge = () => {
+    switch (status) {
+      case "idle":
+        return <Badge variant="neutral">Aguardando Análise</Badge>;
+      case "loading":
+        return <Badge variant="blue">Processando...</Badge>;
+      case "success":
+        return <Badge variant="green">Triagem Concluída</Badge>;
+      case "error":
+        return <Badge variant="red">Erro na Análise</Badge>;
     }
   };
 
@@ -131,10 +197,19 @@ export default function IAPage() {
                 variant="primary"
                 className="w-full"
                 onClick={handleAnalyze}
-                disabled={isAnalyzing}
+                disabled={status === "loading" || !demandText.trim()}
               >
-                <Sparkles className="h-4 w-4 mr-1.5" />
-                {isAnalyzing ? "Processando com IA..." : "Executar Análise e Triagem Inteligente"}
+                {status === "loading" ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                    Processando com IA...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-1.5" />
+                    Executar Análise e Triagem Inteligente
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>
@@ -145,38 +220,97 @@ export default function IAPage() {
               <CardTitle className="text-sm font-semibold flex items-center gap-2 text-green">
                 <Bot className="h-4 w-4" /> Diagnóstico da IA
               </CardTitle>
-              <Badge variant="green">Triagem Concluída</Badge>
+              {statusBadge()}
             </CardHeader>
             <CardContent className="p-4 space-y-3.5 text-xs">
-              <div className="p-2.5 bg-paper rounded border border-line space-y-1">
-                <div className="text-[11px] text-muted font-medium">Categoria Sugerida:</div>
-                <div className="font-semibold text-ink">{analysisResult.category}</div>
-              </div>
-
-              <div className="p-2.5 bg-paper rounded border border-line space-y-1">
-                <div className="text-[11px] text-muted font-medium">Grau de Criticidade:</div>
-                <div className="font-semibold text-red-700">{analysisResult.urgency}</div>
-              </div>
-
-              <div className="p-2.5 bg-paper rounded border border-line space-y-1">
-                <div className="text-[11px] text-muted font-medium">Resumo Executivo para a Equipe:</div>
-                <div className="text-ink leading-relaxed">{analysisResult.summary}</div>
-              </div>
-
-              <div className="p-2.5 bg-mint/30 rounded border border-green/20 space-y-1">
-                <div className="text-[11px] text-green font-semibold flex items-center justify-between">
-                  <span>Minuta de Resposta ao Munícipe:</span>
-                  <span className="text-[10px] text-muted font-normal">Supervisão humana necessária</span>
+              {/* Estado Idle */}
+              {status === "idle" && (
+                <div className="flex flex-col items-center justify-center py-8 text-muted text-center space-y-2">
+                  <Bot className="h-8 w-8 opacity-40" />
+                  <p className="text-sm">Aguardando análise</p>
+                  <p className="text-[11px]">Cole uma mensagem à esquerda e clique em &quot;Executar Análise&quot;</p>
                 </div>
-                <p className="text-ink leading-relaxed italic text-[11px]">
-                  "{analysisResult.suggestedResponse}"
-                </p>
-                <div className="pt-2 flex justify-end">
-                  <Button variant="secondary" size="sm" className="text-[11px]">
-                    <Copy className="h-3 w-3 mr-1" /> Copiar para WhatsApp
+              )}
+
+              {/* Estado Loading */}
+              {status === "loading" && (
+                <div className="flex flex-col items-center justify-center py-8 text-muted text-center space-y-2">
+                  <Loader2 className="h-8 w-8 animate-spin opacity-60" />
+                  <p className="text-sm">Analisando com Inteligência Artificial...</p>
+                  <p className="text-[11px]">Classificando categoria, criticidade e gerando minuta de resposta</p>
+                </div>
+              )}
+
+              {/* Estado Erro */}
+              {status === "error" && (
+                <div className="flex flex-col items-center justify-center py-6 text-center space-y-2">
+                  <AlertTriangle className="h-8 w-8 text-red-500 opacity-70" />
+                  <p className="text-sm font-semibold text-red-700">Erro na análise</p>
+                  <p className="text-[11px] text-muted max-w-xs">{errorMessage}</p>
+                  <Button variant="secondary" size="sm" className="mt-2 text-[11px]" onClick={handleAnalyze}>
+                    Tentar novamente
                   </Button>
                 </div>
-              </div>
+              )}
+
+              {/* Estado Sucesso */}
+              {status === "success" && analysisResult && (
+                <>
+                  <div className="p-2.5 bg-paper rounded border border-line space-y-1">
+                    <div className="text-[11px] text-muted font-medium">Categoria Sugerida:</div>
+                    <div className="font-semibold text-ink">{analysisResult.category}</div>
+                  </div>
+
+                  <div className="p-2.5 bg-paper rounded border border-line space-y-1">
+                    <div className="text-[11px] text-muted font-medium">Grau de Criticidade:</div>
+                    <div className={`font-semibold ${getUrgencyClass(analysisResult.urgency)}`}>
+                      {analysisResult.urgency}
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 bg-paper rounded border border-line space-y-1">
+                    <div className="text-[11px] text-muted font-medium">Resumo Executivo para a Equipe:</div>
+                    <div className="text-ink leading-relaxed">{analysisResult.summary}</div>
+                  </div>
+
+                  {analysisResult.suggestedAction && (
+                    <div className="p-2.5 bg-amber-50 rounded border border-amber-200 space-y-1">
+                      <div className="text-[11px] text-amber-800 font-semibold">Ação Recomendada:</div>
+                      <div className="text-ink leading-relaxed">{analysisResult.suggestedAction}</div>
+                    </div>
+                  )}
+
+                  {analysisResult.suggestedResponse && (
+                    <div className="p-2.5 bg-mint/30 rounded border border-green/20 space-y-1">
+                      <div className="text-[11px] text-green font-semibold flex items-center justify-between">
+                        <span>Minuta de Resposta ao Munícipe:</span>
+                        <span className="text-[10px] text-muted font-normal">Supervisão humana necessária</span>
+                      </div>
+                      <p className="text-ink leading-relaxed italic text-[11px]">
+                        &quot;{analysisResult.suggestedResponse}&quot;
+                      </p>
+                      <div className="pt-2 flex justify-end">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="text-[11px]"
+                          onClick={handleCopy}
+                        >
+                          {copied ? (
+                            <>
+                              <CheckCircle className="h-3 w-3 mr-1 text-green" /> Copiado!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3 mr-1" /> Copiar para WhatsApp
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
