@@ -213,3 +213,25 @@ Passou.
 
 ### Status
 Concluído
+
+---
+
+## [FASE-10-COMPLEMENTO] — Workflow Engine, WhatsApp Omnichannel e Command Center
+
+### Solução
+Implementados 3 novos endpoints:
+- `POST /api/workflows/evaluate` (`apps/client/src/app/api/workflows/evaluate/route.ts`)
+- `GET /api/whatsapp/inbox` (`apps/client/src/app/api/whatsapp/inbox/route.ts`)
+- `GET /api/command-center/health` (`apps/master/src/app/api/command-center/health/route.ts`)
+
+### Testes executados
+- `tsc --noEmit -p apps/client/tsconfig.json` — Passou
+- `tsc --noEmit -p apps/master/tsconfig.json` — Passou
+- `node tests/security/security-regression.test.ts` — Passou
+- `node tests/e2e/harness/runner.ts` — Passou (102/102 contratos)
+
+### Resultado
+Passou.
+
+### Status
+Concluído
