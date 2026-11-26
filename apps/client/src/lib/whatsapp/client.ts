@@ -29,21 +29,38 @@ async function whatsappFetch<T = unknown>(
     ...(instanceToken ? { Authorization: `Bearer ${instanceToken}` } : {}),
   };
 
-  const response = await fetch(`${node.baseUrl}${path}`, {
-    ...rest,
-    headers: {
-      ...authHeaders,
-      ...(headers as Record<string, string>),
-    },
-    cache: "no-store",
-  });
+  let response: Response | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    response = await fetch(`${node.baseUrl}${path}`, {
+      ...rest,
+      headers: {
+        ...authHeaders,
+        ...(headers as Record<string, string>),
+      },
+      cache: "no-store",
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`WhatsApp API error (${response.status}): ${errorText}`);
+    if (response.status !== 502 && response.status !== 503 && response.status !== 504) {
+      break;
+    }
+
+    if (attempt === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
   }
 
-  return response.json() as Promise<T>;
+  if (!response!.ok) {
+    const errorText = await response!.text();
+    const isHtml = errorText.trimStart().startsWith("<");
+    if (response!.status >= 502 && response!.status <= 504 || isHtml) {
+      throw new Error(
+        `Servidor WhatsApp temporariamente indisponível (${response!.status}). Aguarde alguns segundos e tente novamente.`
+      );
+    }
+    throw new Error(`WhatsApp API error (${response!.status}): ${errorText}`);
+  }
+
+  return response!.json() as Promise<T>;
 }
 
 export const whatsappClient = {
