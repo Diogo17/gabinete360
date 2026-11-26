@@ -70,6 +70,53 @@ export async function GET(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  try {
+    const gabineteId = req.nextUrl.searchParams.get("gabineteId");
+    if (!gabineteId) {
+      return NextResponse.json({ error: "gabineteId obrigatório" }, { status: 400 });
+    }
+
+    const supabase = getAdminSupabase();
+    if (!supabase) {
+      return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY não configurada" }, { status: 500 });
+    }
+
+    const { data: inst } = await supabase
+      .from("whatsapp_instances")
+      .select("id, instance_name, instance_token, whatsapp_nodes(base_url, global_token)")
+      .eq("gabinete_id", gabineteId)
+      .maybeSingle();
+
+    if (inst?.instance_name && inst?.instance_token) {
+      const nodeData = Array.isArray(inst.whatsapp_nodes)
+        ? inst.whatsapp_nodes[0]
+        : inst.whatsapp_nodes;
+      const baseUrl = nodeData?.base_url || process.env.WHATSAPP_API_URL || "https://gabinete-360-whatsapp-b6xo7.sprites.app";
+      const globalToken = nodeData?.global_token || process.env.WHATSAPP_API_GLOBAL_TOKEN || "gab360_global_tok3n_2026_prod";
+
+      await fetch(`${baseUrl}/instance/logout/${encodeURIComponent(inst.instance_name)}`, {
+        method: "DELETE",
+        headers: {
+          apikey: globalToken,
+          Authorization: `Bearer ${inst.instance_token}`,
+        },
+        cache: "no-store",
+      }).catch(() => null);
+
+      await supabase
+        .from("whatsapp_instances")
+        .update({ status: "disconnected", qr_code: null, pairing_code: null, updated_at: new Date().toISOString() })
+        .eq("id", inst.id);
+    }
+
+    return NextResponse.json({ ok: true, status: "disconnected" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro ao desconectar";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

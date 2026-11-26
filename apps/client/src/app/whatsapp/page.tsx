@@ -231,8 +231,25 @@ export default function WhatsAppPage() {
       )}
 
       {status === "connected" && (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-600">
-          <CheckCircle2 className="h-4 w-4" /> WhatsApp conectado e pronto para atendimento.
+        <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-600">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4" /> WhatsApp conectado e pronto para atendimento.
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!gabineteId) return;
+              await fetch(`/api/whatsapp/instance?gabineteId=${encodeURIComponent(gabineteId)}`, {
+                method: "DELETE",
+              });
+              setStatus("disconnected");
+              setQrCode(null);
+              setPairingCode(null);
+            }}
+            className="rounded-md border border-red-500/30 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-500/10"
+          >
+            Desconectar
+          </button>
         </div>
       )}
 
