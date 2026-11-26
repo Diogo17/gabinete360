@@ -233,7 +233,7 @@ export default function ClientDashboardPage() {
               Visão Geral do Mandato
             </div>
             <h1 className="mt-0.5 font-heading text-2xl md:text-[27px] font-extrabold tracking-tight text-ink">
-              Bom dia, {profile?.display_name || "Mariana Costa"}!
+              Bom dia, {profile?.display_name || organization?.name || "Parlamentar"}!
             </h1>
             <p className="text-xs text-muted">
               Aqui está o panorama operacional do seu gabinete parlamentar em Santos · SP.

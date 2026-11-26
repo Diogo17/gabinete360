@@ -16,7 +16,7 @@ export function resolveTenantSlug(hostname: string, pathname: string): string | 
     return matchPath[1].toLowerCase();
   }
 
-  return "gabinete-demo";
+  return null;
 }
 
 export async function middleware(request: NextRequest) {
@@ -70,6 +70,7 @@ export async function middleware(request: NextRequest) {
 
   // 4. Protected private operational routes
   const isProtectedRoute =
+    lowerPath === "/" ||
     lowerPath.startsWith("/dashboard") ||
     lowerPath.startsWith("/demandas") ||
     lowerPath.startsWith("/cidadaos") ||
