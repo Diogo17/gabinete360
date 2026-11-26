@@ -199,7 +199,7 @@ export function ClientShell({
       topbarActions={
         <div className="flex items-center gap-2">
           <OrganizationSwitcher />
-          {(role === "admin" || (role as string) === "master") && (
+          {(membership?.role === "admin" || (membership?.role as string) === "master") && (
             <a
               href="/master/dashboard"
               className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg border border-line bg-paper text-ink hover:bg-mint hover:text-green hover:border-green/30 transition-all"
