@@ -89,7 +89,7 @@ const INITIAL_LEGISLATIVE: LegislativeItem[] = [
 ];
 
 export default function LegislativoPage() {
-  const [items, setItems] = useState<LegislativeItem[]>(INITIAL_LEGISLATIVE);
+  const [items, setItems] = useState<LegislativeItem[]>([]);
   const [filterKind, setFilterKind] = useState("all");
   const [search, setSearch] = useState("");
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -181,7 +181,7 @@ export default function LegislativoPage() {
               <strong>Produção Legislativa do Mandato</strong> — Acompanhamento de Projetos de Lei, Requerimentos, Indicações e Emendas Parlamentares.
             </span>
           </div>
-          <Badge variant="green">Ambiente Demonstração</Badge>
+
         </div>
 
         {/* Filtros e Busca */}

@@ -19,10 +19,6 @@ export interface DemandActionResult {
   error?: string | null;
 }
 
-// Fallback apenas para seed/ambiente inicial piloto quando usuário não estiver cadastrado em outra org
-const PILOT_ORG_ID = "a0000000-0000-0000-0000-000000000001";
-const PILOT_WORKSPACE_ID = "c0000000-0000-0000-0000-000000000001";
-
 /**
  * Deriva a organização ativa e workspace do usuário autenticado a partir de sua membership.
  */
@@ -55,9 +51,13 @@ async function resolveUserTenant(supabase: any, userId: string | undefined) {
     .limit(1)
     .maybeSingle();
 
+  if (!workspace?.id) {
+    return null;
+  }
+
   return {
     organizationId: orgId,
-    workspaceId: workspace?.id || PILOT_WORKSPACE_ID,
+    workspaceId: workspace.id,
   };
 }
 

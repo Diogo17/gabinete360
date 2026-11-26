@@ -65,7 +65,7 @@ const INITIAL_PROPOSALS: CommunityProposal[] = [
 ];
 
 export default function ParticipacaoPage() {
-  const [proposals, setProposals] = useState<CommunityProposal[]>(INITIAL_PROPOSALS);
+  const [proposals, setProposals] = useState<CommunityProposal[]>([]);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
   // Form
@@ -121,7 +121,7 @@ export default function ParticipacaoPage() {
               <strong>Voz Cidadã e Consultas Públicas</strong> — Espaço para a comunidade sugerir, apoiar ideias e colaborar na construção de projetos de lei para o município.
             </span>
           </div>
-          <Badge variant="green">Ambiente Demonstração</Badge>
+
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

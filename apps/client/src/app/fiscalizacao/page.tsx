@@ -63,7 +63,7 @@ const INITIAL_INSPECTIONS: InspectionCase[] = [
 ];
 
 export default function FiscalizacaoPage() {
-  const [cases, setCases] = useState<InspectionCase[]>(INITIAL_INSPECTIONS);
+  const [cases, setCases] = useState<InspectionCase[]>([]);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
   // Form
@@ -115,7 +115,7 @@ export default function FiscalizacaoPage() {
               <strong>Dever Constitucional de Fiscalização</strong> — Registro de visitas fiscalizatórias a obras, postos de saúde, escolas e contratos públicos.
             </span>
           </div>
-          <Badge variant="green">Ambiente Demonstração</Badge>
+
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

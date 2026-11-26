@@ -28,7 +28,7 @@ import {
   Grid3X3,
   CalendarRange,
 } from "lucide-react";
-import { type DemoAgendaEvent } from "../../lib/mock-data";
+import { type DemoAgendaEvent } from "../../lib/types/domain";
 
 export default function AgendaPage() {
   const { organization } = useOrganization();

@@ -40,7 +40,7 @@ import {
   UserCheck,
   Building,
 } from "lucide-react";
-import { type DemoCitizen } from "../../lib/mock-data";
+import { type DemoCitizen } from "../../lib/types/domain";
 import { citizenSchema, validateForm } from "../../lib/validation/schemas";
 
 export default function CidadaosPage() {

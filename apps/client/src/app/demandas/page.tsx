@@ -40,7 +40,7 @@ import {
   RefreshCw,
   FileText,
 } from "lucide-react";
-import { type DemoDemand } from "../../lib/mock-data";
+import { type DemoDemand } from "../../lib/types/domain";
 import { demandSchema, validateForm } from "../../lib/validation/schemas";
 import { createDemandAction, getDemandsAction } from "../../lib/actions/demands";
 

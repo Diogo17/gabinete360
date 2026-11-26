@@ -62,7 +62,7 @@ const INITIAL_REPORTS: RestrictedReport[] = [
 ];
 
 export default function DenunciasPage() {
-  const [reports, setReports] = useState<RestrictedReport[]>(INITIAL_REPORTS);
+  const [reports, setReports] = useState<RestrictedReport[]>([]);
   const [unlockedReportId, setUnlockedReportId] = useState<string | null>(null);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [targetReport, setTargetReport] = useState<RestrictedReport | null>(null);

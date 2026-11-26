@@ -33,7 +33,7 @@ import {
   Trash2,
   Camera,
 } from "lucide-react";
-import { type DemoTeamMember } from "../../lib/mock-data";
+import { type DemoTeamMember } from "../../lib/types/domain";
 
 export default function EquipePage() {
   const { organization } = useOrganization();
@@ -171,7 +171,7 @@ export default function EquipePage() {
               <strong>Equipe e Controle de Acessos RBAC</strong> — Gerenciamento de servidores, assessores parlamentares e atribuição de permissões operacionais.
             </span>
           </div>
-          <Badge variant="green">Ambiente Demonstração</Badge>
+
         </div>
 
         <Card>

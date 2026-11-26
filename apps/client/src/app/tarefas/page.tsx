@@ -26,7 +26,7 @@ import {
   CheckCircle,
   AlertTriangle,
 } from "lucide-react";
-import { type DemoTask } from "../../lib/mock-data";
+import { type DemoTask } from "../../lib/types/domain";
 
 export default function TarefasPage() {
   const { organization } = useOrganization();
@@ -117,7 +117,7 @@ export default function TarefasPage() {
               <strong>Tarefas e Fluxos Internos do Gabinete</strong> — Distribuição de responsabilidades, prazos de ofícios e acompanhamento de providências.
             </span>
           </div>
-          <Badge variant="green">Ambiente Demonstração</Badge>
+
         </div>
 
         {/* Filtros */}
