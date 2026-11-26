@@ -16,11 +16,15 @@ export async function middleware(request: NextRequest) {
   }
 
   // 2. Supabase session update
-  const { supabaseResponse, user } = await updateMasterSession(request);
+  const { supabaseResponse, user, supabase } = await updateMasterSession(request);
 
-  // Check custom session cookies
-  const hasAdminAuth = user !== null || request.cookies.get("master_admin_auth")?.value === "true";
-  const hasMfaVerified = request.cookies.get("master_mfa_verified")?.value === "true";
+  // Require real Supabase authenticated user (no cookie-only bypass)
+  const hasAdminAuth = user !== null;
+  let hasMfaVerified = false;
+  if (hasAdminAuth) {
+    const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    hasMfaVerified = aalData?.currentLevel === "aal2";
+  }
 
   const isAuthRoute = pathname === "/login" || pathname.startsWith("/auth");
   const isMfaRoute = pathname === "/mfa";

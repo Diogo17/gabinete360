@@ -1,0 +1,130 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 3242 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(MANUAL COMPLETO - GABINETE DIGITAL 360°) Tj T*
+() Tj T*
+(1. Introdução) Tj T*
+(O Gabinete Digital 360° é uma plataforma SaaS multi-tenant para gestão de gabinetes) Tj T*
+(parlamentares e Câmaras Municipais, desenvolvida em monorepo \(pnpm + Turborepo\) com foco em) Tj T*
+(atendimento ao cidadão, produção legislativa, fiscalização, transparência pública e) Tj T*
+(integração com WhatsApp e IA assistiva.) Tj T*
+() Tj T*
+(2. Arquitetura Real) Tj T*
+(- Portal do Gabinete \(apps/client - @gabinete360/client, porta 3000\): Next.js 15, React 19,) Tj T*
+(Tailwind CSS, @supabase/ssr.) Tj T*
+(- Painel Master \(apps/master - @gabinete360/master, porta 3001\): Next.js 15, React 19,) Tj T*
+(controle de organizações, planos, provisionamento e auditoria.) Tj T*
+(- Pacotes Compartilhados \(packages/\):) Tj T*
+(- @gabinete360/ui: Design System \(tokens Light/Dark, Manrope/DM Sans, AppShell, primitivos\).) Tj T*
+(- @gabinete360/types: Tipagens de domínio compartilhadas.) Tj T*
+(- @gabinete360/config: Presets de ESLint, Tailwind e TypeScript.) Tj T*
+(- Banco de Dados & Auth: Supabase PostgreSQL com separação entre *Control Plane* e) Tj T*
+(*Operational Plane* e isolamento multi-tenant via Row Level Security \(RLS\).) Tj T*
+(- Deploy: Vercel \(vercel.json com roteamento para client e /master\).) Tj T*
+() Tj T*
+(3. Acesso e Autenticação) Tj T*
+(- Gabinete \(apps/client\): Acesso via /login \(e-mail/senha ou OTP via Supabase Auth\).) Tj T*
+(- Painel Master \(apps/master\): Acesso via /login com exigência de segundo fator em /mfa) Tj T*
+(\(AAL2\).) Tj T*
+() Tj T*
+(4. Gestão de Usuários e Equipe) Tj T*
+(- Gerenciada no módulo /equipe \(apps/client/src/app/equipe/page.tsx\) sobre a tabela) Tj T*
+(public.memberships.) Tj T*
+(- O acesso às rotas e dados do gabinete exige vínculo ativo \(status = 'active'\).) Tj T*
+() Tj T*
+(5. Módulos do Gabinete \(apps/client\)) Tj T*
+(- Dashboard \(/dashboard\): Visão geral de demandas, agenda e indicadores do gabinete.) Tj T*
+(- Cidadãos \(/cidadaos\): Cadastro e diretório de cidadãos atendidos.) Tj T*
+(- Demandas \(/demandas\): Triagem, prioridade e acompanhamento de solicitações comunitárias.) Tj T*
+(- Agenda \(/agenda\): Compromissos parlamentares e audiências.) Tj T*
+(- Tarefas \(/tarefas\): Delegação e acompanhamento interno da equipe.) Tj T*
+(- Legislativo \(/legislativo\): Proposições, destinatários \(/legislativo/destinatarios\),) Tj T*
+(protocolos \(/legislativo/protocolos\) e presets de Januária-MG \(/legislativo/januaria\) com) Tj T*
+(verificação de conformidade \(red-flag-checker e confidence-panel\).) Tj T*
+(- Assinatura Eletrônica \(/assinar/[id] e /validar-assinatura\): Solicitação e verificação de) Tj T*
+(assinatura com hash SHA-256 e trilha de auditoria encadeada.) Tj T*
+(- Fiscalização \(/fiscalizacao\) e Denúncias \(/denuncias\): Registro de vistorias e canal) Tj T*
+(sigiloso segregado.) Tj T*
+(- Participação \(/participacao\) e Portal Público \(/portal\): Transparência, agenda pública e) Tj T*
+(captação de demandas cidadãs \(/api/public/intake\).) Tj T*
+(- WhatsApp \(/whatsapp\): Conexão de instância via QR Code, envio de texto/mídia) Tj T*
+(\(/api/whatsapp/send\) e recepção em tempo real \(/api/whatsapp/webhook\).) Tj T*
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 1991 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(- IA Assistiva \(/ia\): Triagem de demandas, minutas legislativas e resumo diário via) Tj T*
+(/api/ia/assist \(Google Gemini gemini-2.5-flash\), sempre sujeita à revisão humana.) Tj T*
+(- Privacidade \(/privacidade\): Política de Privacidade e Proteção de Dados \(LGPD - Lei nº) Tj T*
+(13.709/2018 e Marco Civil\).) Tj T*
+() Tj T*
+(6. Painel Master \(apps/master\)) Tj T*
+(- /dashboard: Métricas executivas da plataforma.) Tj T*
+(- /organizacoes e /clientes: Cadastro e configuração de gabinetes/câmaras.) Tj T*
+(- /planos e /planos-modulos: Catálogo de planos e módulos habilitados.) Tj T*
+(- /provisionamento: Pipeline de provisionamento de novos tenants.) Tj T*
+(- /administradores: Diretório de platform_admins com MFA.) Tj T*
+(- /monitoramento, /auditoria e /suporte: Telemetria, logs de auditoria e acesso emergencial) Tj T*
+(JIT.) Tj T*
+() Tj T*
+(7. Variáveis de Ambiente Obrigatórias) Tj T*
+(Consulte .env.example na raiz do projeto. Nunca versione .env ou .env.local:) Tj T*
+(- Públicas: NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_SUPABASE_URL,) Tj T*
+(NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_MASTER_APP_URL,) Tj T*
+(NEXT_PUBLIC_MASTER_SUPABASE_URL, NEXT_PUBLIC_MASTER_SUPABASE_PUBLISHABLE_KEY.) Tj T*
+(- Server-side \(Privadas\): SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY,) Tj T*
+(MASTER_ADMIN_JWT_SECRET, WHATSAPP_API_URL, WHATSAPP_API_GLOBAL_TOKEN,) Tj T*
+(WHATSAPP_WEBHOOK_SECRET.) Tj T*
+() Tj T*
+(8. Troubleshooting Rápido) Tj T*
+(- Erro 401/403 nas APIs de WhatsApp ou IA: Verifique se o usuário está autenticado e possui) Tj T*
+(registro active em public.memberships para o gabineteId informado.) Tj T*
+(- Webhook WhatsApp retornando 401: Confirme se o header x-webhook-secret ou apikey enviado) Tj T*
+(pelo microserviço corresponde a WHATSAPP_WEBHOOK_SECRET.) Tj T*
+(- Erro de Typecheck / Build: Execute node ./node_modules/typescript/bin/tsc --noEmit -p) Tj T*
+(apps/client/tsconfig.json e node tests/e2e/harness/runner.ts.) Tj T*
+() Tj T*
+ET
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000344 00000 n 
+0000003637 00000 n 
+0000003763 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+5805
+%%EOF

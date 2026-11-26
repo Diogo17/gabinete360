@@ -1,12 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { whatsappClient, type WhatsAppNodeConfig } from "@/lib/whatsapp/client";
+
+const UuidSchema = z.string().uuid();
 
 const ConnectSchema = z.object({
   gabineteId: z.string().uuid(),
   phoneNumber: z.string().optional(),
 });
+
+async function requireCabinetAccess(gabineteId: string): Promise<NextResponse | null> {
+  if (!UuidSchema.safeParse(gabineteId).success) {
+    return NextResponse.json({ error: "gabineteId inválido" }, { status: 400 });
+  }
+  const userClient = await createServerSupabase();
+  const {
+    data: { user },
+    error: authError,
+  } = await userClient.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+  }
+
+  const { data: membership } = await userClient
+    .from("memberships")
+    .select("id")
+    .eq("organization_id", gabineteId)
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!membership) {
+    return NextResponse.json({ error: "Acesso negado a este gabinete." }, { status: 403 });
+  }
+
+  return null;
+}
 
 function getAdminSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,6 +53,8 @@ export async function GET(req: NextRequest) {
     if (!gabineteId) {
       return NextResponse.json({ error: "gabineteId obrigatório" }, { status: 400 });
     }
+    const denied = await requireCabinetAccess(gabineteId);
+    if (denied) return denied;
 
     const supabase = getAdminSupabase();
     if (!supabase) {
@@ -76,6 +110,8 @@ export async function DELETE(req: NextRequest) {
     if (!gabineteId) {
       return NextResponse.json({ error: "gabineteId obrigatório" }, { status: 400 });
     }
+    const denied = await requireCabinetAccess(gabineteId);
+    if (denied) return denied;
 
     const supabase = getAdminSupabase();
     if (!supabase) {
@@ -126,6 +162,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { gabineteId, phoneNumber } = parsed.data;
+    const denied = await requireCabinetAccess(gabineteId);
+    if (denied) return denied;
     const instanceName = `gabinete_${gabineteId.replace(/-/g, "").slice(0, 12)}`;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
     const webhookUrl = `${appUrl}/api/whatsapp/webhook`;

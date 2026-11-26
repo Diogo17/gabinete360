@@ -1,7 +1,33 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "../supabase/server";
+import { createAdminClient, createClient } from "../supabase/server";
+
+async function requireMasterAdmin(): Promise<{ ok: true } | { ok: false; error: string }> {
+  const userClient = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await userClient.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "Não autorizado. Faça login no Painel Master." };
+  }
+
+  const adminClient = await createAdminClient();
+  const { data: adminRow } = await adminClient
+    .from("platform_admins")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!adminRow) {
+    return { ok: false, error: "Acesso negado. Usuário não é administrador ativo da plataforma." };
+  }
+
+  return { ok: true };
+}
 
 export interface ConnectionConfigInput {
   organizationId?: string;
@@ -32,6 +58,11 @@ export interface LegislativeLinkInput {
  */
 export async function upsertConnectionConfig(input: ConnectionConfigInput) {
   try {
+    const auth = await requireMasterAdmin();
+    if (!auth.ok) {
+      return { success: false, error: auth.error };
+    }
+
     const supabase = await createAdminClient();
 
     const payload = {
@@ -69,6 +100,11 @@ export async function upsertConnectionConfig(input: ConnectionConfigInput) {
  */
 export async function addLegislativeItemFromMaster(input: LegislativeLinkInput) {
   try {
+    const auth = await requireMasterAdmin();
+    if (!auth.ok) {
+      return { success: false, error: auth.error };
+    }
+
     const supabase = await createAdminClient();
     const { data, error } = await supabase
       .from("legislative_items")

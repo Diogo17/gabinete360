@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { whatsappClient, type WhatsAppNodeConfig } from "@/lib/whatsapp/client";
 
 const SendMessageSchema = z.object({
@@ -31,6 +32,29 @@ export async function POST(req: NextRequest) {
     }
 
     const { gabineteId, number, text, mediaUrl, mediaType } = parsed.data;
+
+    const userClient = await createServerSupabase();
+    const {
+      data: { user },
+      error: authError,
+    } = await userClient.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+    }
+
+    const { data: membership } = await userClient
+      .from("memberships")
+      .select("id")
+      .eq("organization_id", gabineteId)
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (!membership) {
+      return NextResponse.json({ error: "Acesso negado a este gabinete." }, { status: 403 });
+    }
+
     const supabase = getAdminSupabase();
     if (!supabase) {
       return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY não configurada" }, { status: 500 });

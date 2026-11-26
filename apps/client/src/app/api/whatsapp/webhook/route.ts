@@ -14,6 +14,22 @@ function getAdminSupabase() {
  */
 export async function POST(req: NextRequest) {
   try {
+    const webhookSecret = process.env.WHATSAPP_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      return NextResponse.json(
+        { error: "WHATSAPP_WEBHOOK_SECRET não configurada no servidor." },
+        { status: 500 }
+      );
+    }
+
+    const providedSecret =
+      req.headers.get("x-webhook-secret") ||
+      req.headers.get("apikey") ||
+      req.nextUrl.searchParams.get("secret");
+    if (providedSecret !== webhookSecret) {
+      return NextResponse.json({ error: "Unauthorized webhook" }, { status: 401 });
+    }
+
     const payload = await req.json();
     const event = payload?.event as string | undefined;
     const instanceName = payload?.instance as string | undefined;
@@ -99,6 +115,18 @@ export async function POST(req: NextRequest) {
           .single();
 
         if (contact) {
+          if (messageId) {
+            const { data: existingMsg } = await supabase
+              .from("whatsapp_messages")
+              .select("id")
+              .eq("gabinete_id", instanceRow.gabinete_id)
+              .eq("message_id", messageId)
+              .maybeSingle();
+            if (existingMsg) {
+              return NextResponse.json({ ok: true, event, instance: instanceName, deduplicated: true });
+            }
+          }
+
           await supabase.from("whatsapp_messages").insert({
             gabinete_id: instanceRow.gabinete_id,
             instance_id: instanceRow.id,

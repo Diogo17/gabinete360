@@ -29,8 +29,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Run Lint
+        run: pnpm turbo run lint
+
       - name: Run Typecheck
         run: pnpm turbo run typecheck
+
+      - name: Run E2E Suite
+        run: pnpm test:e2e
 
       - name: Run Build
         env:

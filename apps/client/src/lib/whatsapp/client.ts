@@ -8,10 +8,8 @@ export interface WhatsAppNodeConfig {
 }
 
 const DEFAULT_NODE: WhatsAppNodeConfig = {
-  baseUrl:
-    process.env.WHATSAPP_API_URL || "https://gabinete-360-whatsapp-b6xo7.sprites.app",
-  globalToken:
-    process.env.WHATSAPP_API_GLOBAL_TOKEN || "gab360_global_tok3n_2026_prod",
+  baseUrl: process.env.WHATSAPP_API_URL || "",
+  globalToken: process.env.WHATSAPP_API_GLOBAL_TOKEN || "",
 };
 
 interface RequestOptions extends RequestInit {

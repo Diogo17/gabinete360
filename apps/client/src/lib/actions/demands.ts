@@ -72,8 +72,15 @@ async function resolveUserTenant(supabase: any, userId: string | undefined) {
  */
 export async function createDemandAction(input: DemandInput): Promise<DemandActionResult> {
   try {
+    if (!input?.title || input.title.trim().length < 3) {
+      return { success: false, error: "Título da demanda deve ter pelo menos 3 caracteres." };
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: "Usuário não autenticado." };
+    }
 
     // 1. Deriva o tenant (organização e workspace) a partir do usuário autenticado
     const { organizationId, workspaceId } = await resolveUserTenant(supabase, user?.id);
